@@ -437,7 +437,7 @@ export default class Char {
   update(dTime: number) {
     if (this.animationStage) {
       if (this.animatedPath) {
-        this.animationStage += dTime * 10 * this.terrain.animationSpeed;
+        this.animationStage += dTime * 15 * this.terrain.animationSpeed;
         if (this.animationStage > this.animatedPath.length) {
           this.endAnimation();
         }
@@ -464,15 +464,15 @@ export default class Char {
   }
 
   screenPos() {
-    if (this.animatedPath) {
+    if (this.animatedPath && this.animatedPath[Math.floor(this.animationStage)+1]) {
       return v2.lerp(
         this.terrain.cindToScreen(
           this.animatedPath[Math.floor(this.animationStage)]
         ),
         this.terrain.cindToScreen(
-          this.animatedPath[Math.floor(this.animationStage)]
+          this.animatedPath[Math.floor(this.animationStage)+1]
         ),
-        this.animationStage % 1
+        this.animationStage - Math.floor(this.animationStage)
       );
     } else {
       return this.terrain.cindToScreen(this.cind);
