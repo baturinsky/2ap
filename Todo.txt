@@ -1,0 +1,33 @@
+Todo 
+
+Walk through light cover
+Optimise Blueprint graphics mode
+Main menu
+Water
+Support for custom units, custom weapons, multiple levels in editor
+Status effects
+Overwatch
+Hunker down
+Full Screen and scrolling
+Hidden Movement
+Targeted abilities (heal)
+AOE effects (explosion)
+Tile effects (smoke)
+
+Done
+
+Disjoint UI from game model
+
+-
+
+Ideas
+
+Moving target: bonus to def proportional to move if attacked while moving, or ended turn with movement or melee.
+Shock: malus to def and acc proportional to HP loss, doubled for hp loss in previous turn. Some attacks give extra shock.
+Prone: assumed willingly, or as a result of some atttacks. Disables step-out. -50% def against melee.
+Observe action: -25% def, bonus to vision range and acc next turn.
+Focus fire: up to 25% accuracy against same unmoving target, up to 10% accuracy against nearby targets.
+Stress/Alert: units in combat (alerted) accumulated stress for each action depending on it's complexity. Stress gives penalty to acc and def.
+Units not in combat slowly lose stress, but have reduced vision and can only make 1 move action per turn.
+Smoke: reduces acc for all shots through, in, or from it. Reduces visibility (?). Destroying any obstacle creates a small smoke cloud.
+Cover fire: each one making any action in target area has a chance to be shot at reduced acc. Reduces def.

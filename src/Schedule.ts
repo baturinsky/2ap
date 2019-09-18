@@ -1,24 +1,40 @@
-export type Action = (time: number) => number|void;
+export type Action = (time: number) => number | void;
+type Event = {
+  resolve: Action;
+  reject: (reason:any)=>void
+  time: number;
+};
 
 export default class Schedule {
-  events: [Action, number][] = [];
+  events: Event[] = [];
 
-  add(when: number, action: Action) {    
-    for (let i = this.events.length - 1; i > 0; i--)
-      if (this.events[i][1] <= when) {
-        this.events.splice(i + 1, 0, [action, when]);
-        return;
+  when(when: number) {
+    const p = new Promise<number>((resolve, reject) => {
+      let event: Event = { resolve: resolve, reject:reject, time: when };
+      for (let i = this.events.length - 1; i > 0; i--) {
+        if (this.events[i][1] <= when) {
+          this.events.splice(i + 1, 0, event);
+          break;
+        }
       }
-    this.events.splice(0, 0, [action, when]);
+      this.events.unshift(event);
+    });
+    return p;
   }
 
   update(time: number) {
     while (this.events.length > 0 && this.events[0][1] <= time) {
-      let action = this.events.shift()
-      let nextIn = action[0](time);
+      let event = this.events.shift();
+      let nextIn = event.resolve(time);
       if (nextIn || nextIn == 0) {
-        this.add(nextIn + time, action[0]);
+        this.when(nextIn + time).then(event.resolve);
       }
+    }
+  }
+
+  cancelAll(){
+    for(let e of this.events){
+      e.reject("cancelled")
     }
   }
 }

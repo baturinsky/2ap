@@ -68,7 +68,7 @@ window.onload = function() {
   for (let i = 0; i < 3; i++) {
     modeButtons[i].onclick = e => {
       mode = i;
-      game.terrain.setMode(mode);
+      game.setMode(mode);
       updateButtons();
     };
   }
@@ -79,7 +79,7 @@ window.onload = function() {
 
   endButton.onclick = e => {
     if(page == 0){
-      game.terrain.endTurn();
+      game.endTurn();
     }
     if(page == 2){
       game.terrain.init(editArea.value);
@@ -98,19 +98,18 @@ window.onload = function() {
   c.addEventListener("mousedown", e => {
     if (e.button == 2) {
       console.log(game.terrain);
-      game.terrain.cancel();
+      game.cancel();
     } else {
-      game.terrain.click(e.offsetX, e.offsetY);
+      game.click(e.offsetX, e.offsetY);
     }
   });
 
   c.addEventListener("mousemove", e => {
-    game.terrain.hover(e.offsetX, e.offsetY);
+    game.hover(e.offsetX, e.offsetY);
   });
 
   c.addEventListener("mouseleave", e => {
-    delete game.terrain.hoveredTile;
-    game.terrain.updateCanvasCache()
+    game.hover(undefined, undefined)
   });
 
   c.addEventListener("mouseenter", e => {
@@ -131,7 +130,7 @@ window.onload = function() {
   eachFrame(time => {
     if (game && !paused && !game.over()) game.update(time);
     if(page == 0)
-      endButton.style.visibility = game.busy?"hidden":"visible";
+      endButton.style.visibility = game.renderer.busy?"hidden":"visible";
   });
 
   gameUpdated(game);

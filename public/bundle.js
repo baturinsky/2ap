@@ -1,1 +1,1653 @@
-var app=function(t){"use strict";function e(t,e){const i=document.createElement("canvas");return i.width=t,i.height=e,i}function i(t,i){const s=e(...t),a=s.getContext("2d");return a.lineWidth=1,a.strokeStyle="#000",i(a),s}function s(t,e){return Math.floor(t/e)}function a(t,e,i=1){return[t[0]+e[0]*i,t[1]+e[1]*i]}function h(t,e){return[t[0]-e[0],t[1]-e[1]]}function n(t){return Math.sqrt(t[0]*t[0]+t[1]*t[1])}function r(t,e){return n([t[0]-e[0],t[1]-e[1]])}function l(t,e,i){return[t[0]*(1-i)+i*e[0],t[1]*(1-i)+i*e[1]]}function o(t,e,i,s){return new(i||(i=Promise))(function(a,h){function n(t){try{l(s.next(t))}catch(t){h(t)}}function r(t){try{l(s.throw(t))}catch(t){h(t)}}function l(t){t.done?a(t.value):new i(function(e){e(t.value)}).then(n,r)}l((s=s.apply(t,e||[])).next())})}class c{constructor(t){this.damageOptimalRange=[1,20],this.damage=[4,5],this.damagePenaltyPerCell=100,this.accuracyPenaltyMax=20,this.accuracy=60,this.accuracyOptimalRange=[1,1],this.accuracyPenaltyPerCell=1,this.damagePenaltyMax=2,this.breach=0,this.name="Gun",t&&Object.assign(this,t)}damagePenalty(t){let e=0;return t<this.damageOptimalRange[0]&&(e=this.damageOptimalRange[0]-t),t>this.damageOptimalRange[1]&&(e=t-this.damageOptimalRange[1]),Math.min(this.damagePenaltyMax,this.damagePenaltyPerCell*e)}accuracyPenalty(t){let e=0;return t<this.accuracyOptimalRange[0]&&(e=this.accuracyOptimalRange[0]-t),t>this.accuracyOptimalRange[1]&&(e=t-this.accuracyOptimalRange[1]),Math.min(this.accuracyPenaltyMax,this.accuracyPenaltyPerCell*e)}averageDamage(t,e){let i=.5*(this.damage[1]+this.damage[0]);return i-=Math.max(0,e.armor-this.breach),i-=this.damagePenalty(t.dist(e)),Math.max(0,Math.round(10*i)/10)}damageRoll(t,e,i){let s=i()*(this.damage[1]-this.damage[0])+this.damage[0];return s-=Math.max(0,e.armor-this.breach),s-=this.damagePenalty(t.dist(e)),Math.max(0,Math.round(s))}}c.SNIPER=new c({name:"Sniper",damageOptimalRange:[1,30],damagePenaltyPerCell:.1,accuracyOptimalRange:[10,30],accuracyPenaltyPerCell:1,breach:1}),c.SHOTGUN=new c({name:"Shotgun",damage:[6,7],damageOptimalRange:[1,1],damagePenaltyMax:4,damagePenaltyPerCell:.3,accuracy:80,accuracyOptimalRange:[1,1],accuracyPenaltyPerCell:5,accuracyPenaltyMax:40});const d=24;var f=Object.freeze({sniper:"\nHits accurately and hard at long range, regardless of target's armor.\nHas extra defence, making him nearly untouchable when in cover. \nPretty helpess up close and has low HP.\n",assault:"\nPsycho with a shotgun. \nFast and even has a bit of armor to survive close quater fight a bit longer.\nCan deal a lot of damage, but only up close.\n",gunner:"\nEffective in any range and has extra hp.\nQuite slow.\n"});class u{constructor(t,e,i,s,a=new c){switch(this.terrain=t,this.kind=e,this.faction=i,this.cind=s,this.gun=a,this.move=5,this.maxHP=10,this.hp=this.maxHP,this.ap=2,this.armor=0,this.sight=20,this.def=0,e!=u.EYE&&t.chars.push(this),e){case u.GUNNER:this.move=4,this.hp=14;break;case u.ASSAULT:this.move=6,this.armor=1,this.gun=c.SHOTGUN;break;case u.SNIPER:this.hp=7,this.def=10,this.gun=c.SNIPER}this.maxHP=this.hp}static from(t,e,i){let s=u.letters.indexOf(e);return s>=0?new u(t,s,u.RED,i):(s=u.letters.indexOf(e.toLowerCase()))>=0?new u(t,s,u.BLUE,i):void 0}renderBody(t){let e=0,i=this.terrain.eye;if(i&&i.cell.fov&&i.faction!=this.faction){e=i.cell.fov.has(this.cind)||this.faction==i.faction?(0==this.cover(i)?1:0)+(0==i.cover(this)?2:0):4}this.terrain.hoveredTile||(e=0),t.fillStyle=["#fff","#faa","#afa","#ffa","#ccc"][e],t.strokeStyle=this.strokeColor,t.shadowColor="#444",t.shadowOffsetX=1,t.shadowOffsetY=1,t.shadowBlur=4,t.beginPath(),t.arc(.5*d,.5*d,.4*d,0,2*Math.PI),t.fill(),t.shadowColor="rgba(0,0,0,0)",t.lineWidth=2;for(let e=0;e<this.hp;e++){let i=Math.PI*(1-e/(this.maxHP-1)),a=(s=i,[Math.cos(s),Math.sin(s)]);t.beginPath(),t.moveTo((.5+.4*a[0])*d,(.5+.4*a[1])*d),t.lineTo((.5+.5*a[0])*d,(.5+.5*a[1])*d),t.stroke()}var s;t.lineWidth=1,t.fillStyle=this.strokeColor,t.textAlign="center",t.font=`bold ${d/2}pt Courier`,t.fillText(u.letters[this.kind].toUpperCase(),.5*d,.66*d),t.stroke()}get friend(){return 1==this.faction}render(t){if(this.animatedShot){t.lineWidth=4,t.beginPath();let i=function(t,e=1){let i=n(t)||1;return[t[0]/i*e,t[1]/i*e]}(h(this.animatedShot[1],this.animatedShot[0]),-20),s=l(this.animatedShot[0],this.animatedShot[1],this.animationStage),r=a(s,i);var e=t.createLinearGradient(r[0],r[1],s[0],s[1]);e.addColorStop(0,"rgba(0,0,0,0)"),e.addColorStop(1,"rgba(0,0,0,1)"),t.strokeStyle=e,t.moveTo(...r),t.lineTo(...s),t.stroke(),t.lineWidth=1,t.strokeStyle="#000"}t.save(),t.translate(...this.screenPos()),this.renderBody(t),this.ap>0&&(t.fillStyle=this.strokeColor,t.beginPath(),t.moveTo(1,1),t.lineTo(6,1),t.lineTo(1,6),t.closePath(),t.fill(),this.ap>1&&(t.beginPath(),t.moveTo(d-1,1),t.lineTo(d-6,1),t.lineTo(+d-1,6),t.closePath(),t.fill())),this.selected&&this.outline(t,Math.sin((new Date).getTime()/100)+1),this.hovered&&this.outline(t,1.5),t.restore()}pathTo(t){let e=[t];for(;!((t=this.dists[t][1])<0);)e.push(t);return e.reverse()}get strokeColor(){return this.friend?"#00a":"#a00"}outline(t,e=2){t.save(),t.shadowColor="rgba(0,0,0,0)",t.strokeStyle=this.strokeColor,t.lineWidth=e,t.beginPath(),t.arc(d/2,d/2,.4*d,0,2*Math.PI),t.stroke(),t.restore()}get hovered(){return this.terrain.hoveredChar==this}get selected(){return this.terrain.chosen==this}get x(){return this.cind%this.terrain.w}get y(){return s(this.cind,this.terrain.w)}to(t){return!(t==this.cind||!t)&&(this.animateWalk(t),delete this.cell.char,this.cind=t,this.cell.char=this,this.ap-=this.apCost(t),this.cell.goody&&(this.hp=this.maxHP,this.cell.goody=0),this.calculate(),this.cell.calculate(),!0)}animateWalk(t){this.animatedPath=this.pathTo(t),this.animationStage=.01}get cell(){return this.terrain.cells[this.cind]}reachable(t){return this.apCost(t)<=this.ap}calculateDists(){this.dists=this.terrain.calcDists(this.cind)}calculate(){this.calculateDists()}cover(t){return this.terrain.cover(this.cell,t.cell)}get at(){return this.terrain.fromCind(this.cind)}apCost(t){if(!this.dists)return Number.MAX_VALUE;let e=this.dists[t][0];return Math.ceil(e/this.move)}canFire(){return this.ap>0}hitChance(t){let e=this.cover(t);if(-1==e)return 0;let i=this.gun.accuracy,s=t.def;return Math.round(i-20*e-s-this.gun.accuracyPenalty(this.dist(t)))}die(){this.terrain.chars=this.terrain.chars.filter(t=>t.hp>0),delete this.cell.char,0==this.team.chars.length&&this.terrain.declareVictory(1-this.faction)}takeDamage(t){this.hp=Math.max(0,this.hp-t),this.hp<=0&&this.die(),this.terrain.resetCanvasCache(),this.terrain.game.updateInfo(this.terrain.hoveredChar?this.terrain.hoveredChar.info():null)}get team(){return this.terrain.teams[this.faction]}fire(t){if(!t)return!1;let e=t.char;if(!e)return!1;let i=this.hitChance(e);if(0==i)return!1;let s=this.terrain.game.rni()%100<i;this.ap=0;let a="MISS";if(s){let t=this.gun.damageRoll(this,e,this.terrain.game.rnf);e.takeDamage(t),e.hp<=0&&this.team.calculate(),a=`-${t}`}return this.shotText=a,this.animateShot(e.cind),!0}animateShot(t){this.animationStage=.01,this.animatedShot=[this.cind,t].map(t=>this.terrain.cindToCenter(t))}canDamage(t){return t&&this.faction!=t.faction&&this.cell.fov.has(t.cind)&&this.canFire()}bestPosition(){let t=this.terrain.teams[this.faction];this.calculate();let e,i=-100;for(let a in this.dists){let h=this.dists[a][0];if(h>this.move*this.ap)continue;let n=t.strength[a]-t.weakness[a]-.5*s(h,this.move)-.001*h;this.kind==u.ASSAULT&&(n-=.1*t.distance[a]),this.kind==u.SNIPER&&(n+=.1*t.distance[a]),n>i&&(i=n,e=Number(a))}return e}bestTarget(){let t=-100,e=null;for(let i of this.terrain.chars){if(i.faction==this.faction||i.hp<=0)continue;let s=this.hitChance(i)*this.gun.averageDamage(this,i);s>t&&(t=s,e=i.cell)}return e}think(){return o(this,void 0,void 0,function*(){this.to(this.bestPosition())&&(yield this.terrain.game.waitForAnim()),this.ap>0&&this.fire(this.bestTarget())&&(yield this.terrain.game.waitForAnim())})}update(t){this.animationStage&&(this.animatedPath&&(this.animationStage+=15*t*this.terrain.animationSpeed,this.animationStage>this.animatedPath.length&&this.endAnimation()),this.animatedShot&&(this.animationStage+=t*Math.min(10,1e3/r(...this.animatedShot)*this.terrain.animationSpeed),this.animationStage>1&&(this.terrain.game.text(this.animatedShot[1],this.shotText),this.endAnimation())))}endAnimation(){this.animationStage=0,delete this.animatedPath,delete this.animatedShot,this.terrain.game.blockingAnimationEnd&&(this.terrain.game.blockingAnimationEnd(),delete this.terrain.game.blockingAnimationEnd)}screenPos(){return this.animatedPath&&this.animatedPath[Math.floor(this.animationStage)+1]?l(this.terrain.cindToScreen(this.animatedPath[Math.floor(this.animationStage)]),this.terrain.cindToScreen(this.animatedPath[Math.floor(this.animationStage)+1]),this.animationStage-Math.floor(this.animationStage)):this.terrain.cindToScreen(this.cind)}dist(t){return r(this.at,t.at)}info(){let t=[,"gunner","assault","sniper"][this.kind];return`${t.toUpperCase()} <b>${this.hp}HP</b> ${f[t]}`}}u.EYE=-1,u.GUNNER=1,u.ASSAULT=2,u.SNIPER=3,u.RECON=4,u.MEDIC=5,u.HEAVY=6,u.COMMANDER=7,u.RED=0,u.BLUE=1,u.letters="`gasrmhc".split("");class m{constructor(t,e,i,s){this.terrain=t,this.cind=e,this.obstacle=i,this.char=s,this.fov=new Set,this.povs=new Set,this.peeked=new Set}renderThreats(t){let e=this.terrain,i=this.cind;t.strokeStyle="#080",t.lineWidth=4==e.teams[u.RED].strength[i]?3:1,t.beginPath(),t.moveTo(3.5,3.5),t.lineTo(3.5,3.5+3*e.teams[u.RED].strength[i]),t.stroke(),t.strokeStyle="#800",t.lineWidth=4==e.teams[u.RED].weakness[i]?3:1,t.beginPath(),t.moveTo(3.5,3.5),t.lineTo(3.5+3*e.teams[u.RED].weakness[i],3.5),t.stroke()}render(t){let e=this.terrain,i=this.cind,s=[,m.lowTile,m.highTile][this.obstacle],a=e.chosen,h=e.cells[e.hoveredTile];if(t.save(),t.shadowColor="rgba(0,0,0,0)",t.strokeStyle="#000",t.lineWidth=2,h&&h.fov&&!h.fov.has(i)&&e.hoveredTile&&(t.fillStyle="rgba(0,0,0,0.08)",t.fillRect(0,0,d,d)),a&&a.dists){t.lineWidth=1;let s=e.chosen.apCost(i);if(s>0&&s<=e.chosen.ap){let e=[,m.ap1Sprite,m.ap2Sprite][Math.floor(s)];e&&t.drawImage(e,0,0)}}t.restore(),this.goody&&(t.fillStyle="#080",t.fillRect(.35*d,0,.3*d,d),t.fillRect(0,.35*d,d,.3*d)),s&&t.drawImage(s,0,0)}calculatePovAnCover(){this.obstacle||(this.cover=this.terrain.obstacles(this.cind),this.povs=this.terrain.peekSides(this.cind))}calculateFov(){this.fov.clear();for(let t of this.povs)for(let e of this.terrain.calculateFov(t))this.fov.add(e)}calculate(){this.calculatePovAnCover(),this.calculateFov()}get at(){return this.terrain.fromCind(this.cind)}dist(t){return r(this.at,t.at)}seal(){this.obstacle=2,delete this.char,this.goody=0}}m.dashInterval=4,m.ap1Sprite=i([d,d],t=>{t.strokeStyle="#555",t.strokeRect(4.5,4.5,d-8,d-8)}),m.ap2Sprite=i([d,d],t=>{t.strokeStyle="#bbb",t.strokeRect(4.5,4.5,d-8,d-8)}),m.hiddenSprite=i([d,d],t=>{t.fillStyle="rgba(0,0,0,0.12)",t.fillRect(0,0,d,d)}),m.dashPattern=i([m.dashInterval,m.dashInterval],t=>{for(let e=0;e<m.dashInterval;e++)t.fillRect(e,e,1,1)}),m.crossPattern=i([3,3],t=>{for(let e=0;e<m.dashInterval;e++)t.fillRect(m.dashInterval-e-1,e,1,1),t.fillRect(e,e,1,1)}),m.highTile=i([d,d],t=>{t.fillStyle="#000",t.fillRect(0,0,d,d)}),m.lowTile=i([d,d],t=>{t.fillStyle="#fff",t.fillRect(0,0,d,d),t.fillStyle=t.createPattern(m.dashPattern,"repeat"),t.fillRect(0,0,d,d)}),m.emptyTile=i([1,1],t=>{});class g{constructor(t,e){this.terrain=t,this.faction=e,this.fov=new Set}calculate(){this.strength=[],this.weakness=[],this.distance=[];let t=this.terrain;this.fov.clear();for(let t of this.chars)for(let e of t.cell.fov)this.fov.add(e);let e=this.terrain.teams[1-this.faction];for(let i of this.fov){let s=this.terrain.cells[i];for(let a of e.chars){let e=a.cell,h=(4-t.cover(s,e))%5;this.strength[i]>h||(this.strength[i]=h);let n=(4-t.cover(e,s))%5;if(this.weakness[i]>n||(this.weakness[i]=n),h>0||n>0){let t=s.dist(e);this.distance[i]<=t||(this.distance[i]=t)}}}}think(){return o(this,void 0,void 0,function*(){this.calculate();for(let t of this.terrain.chars)t.faction==this.faction&&(yield t.think())})}get chars(){return this.terrain.chars.filter(t=>t.faction==this.faction)}}const v=0,p=1,y=2;class S{constructor(t,e){this.game=t,this.terrainString=e,this.canvasCacheOutdated=!1,this.mode=v,this.init(e)}init(t){let e=t.split("\n").map(t=>t.trim()).filter(t=>t.length>0);this.h=e.length,this.w=Math.max(...e.map(t=>t.length)),this.cells=[],this.chars=[],this.teams=[];for(let t=0;t<this.h;t++){this.victor=-1;let i=e[t];for(let e=0;e<this.w;e++){let s=e+t*this.w,a=i[e]||" ",h=new m(this,s,["+","#"].indexOf(a)+1,u.from(this,a,this.cind(e,t)));"*"==a&&(h.goody=1),this.cells[s]=h}}for(let t=0;t<this.w;t++)this.seal(t,0),this.seal(t,this.h-1);for(let t=0;t<this.h;t++)this.seal(0,t),this.seal(this.w-1,t);this.dir8Deltas=S.dirs8.map(t=>t[0]+t[1]*this.w),this.eye=new u(this,u.EYE,u.BLUE,0);for(let t of this.cells)t.obstacle||t.calculatePovAnCover();for(let t of this.cells)t.obstacle||t.calculate();for(let t=0;t<2;t++){let e=new g(this,t);this.teams[t]=e}this.updateCanvasCache()}seal(t,e){this.cells[this.cind(t,e)].seal()}update(t){for(let e of this.chars)e.update(t)}render(t){this.canvasCache&&!this.canvasCacheOutdated||this.updateCanvasCache(),t.clearRect(0,0,this.w*d,this.h*d),t.drawImage(this.canvasCache,0,0),this.renderPath(this.hoveredTile);for(let e of this.chars)e.render(t)}renderHovered(t){let e=this.cindToScreen(this.hoveredTile);t.strokeStyle="#888",t.lineWidth=1,t.strokeRect(e[0]+.5,e[1]+.5,d,d)}calcDists(t,e){isNaN(+t)&&(t=this.chosen.cind);let i=isNaN(+e)?t:this.cind(t,e),s=this.cells.map(t=>[Number.MAX_VALUE,-1]);s[i]=[0,-1];let a=[i];for(;a.length>0;){let t=a.shift(),e=s[t][0];for(let i=0;i<8;i++){let h=i%2,n=this.dir8Deltas[i]+t,r=!(!this.cells[n].obstacle&&!this.cells[n].char);if(h&&(this.cells[t+this.dir8Deltas[(i+1)%8]].obstacle||this.cells[t+this.dir8Deltas[(i+7)%8]].obstacle)&&(r=!0),!r){let i=h?1.414:1;s[n][0]>e+i&&(s[n]=[e+i,t],a.push(n))}}}return s}cind(t,e){return t+e*this.w}cindScreen(t,e){return this.cind(s(t,d),s(e,d))}cellAt(t,e){return this.cells[this.cind(t,e)]}cellAtScreen(t,e){return this.cells[this.cindScreen(t,e)]}click(t,e){let i=this.cindScreen(t,e);this.clickCell(i),this.resetCanvasCache()}canPlayAs(t){return t.faction==u.BLUE||this.mode!=v}clickCell(t){let e=this.cells[t];if(e){if(e.char){if(this.chosen&&this.chosen.faction==e.char.faction&&this.canPlayAs(e.char))return this.chosen=e.char,void this.chosen.calculate();if(this.chosen&&this.chosen.canDamage(e.char))return void this.chosen.fire(e);this.chosen==e.char?this.cancel():this.canPlayAs(e.char)&&(this.chosen=e.char),this.chosen&&this.chosen.calculate()}!e.char&&this.chosen&&this.chosen.reachable(t)&&(this.chosen.to(t),this.teams[u.RED].calculate()),this.eye.faction=this.chosen?this.chosen.faction:u.BLUE,this.resetCanvasCache()}}hover(t,e){let i=this.cindScreen(t,e);if(this.hoveredTile!=i){this.hoveredTile=i;let t=this.cells[i];if(!t)return;let e="default";(this.chosen&&this.chosen.reachable(i)||t.char)&&(e="pointer"),t.char?this.game.updateInfo(t.char.info()):this.game.updateInfo(),this.chosen&&this.chosen.canDamage(t.char)?(e="crosshair",this.game.updateTooltip(this.cindToCenter(t.cind),`${this.chosen.hitChance(t.char)}% ${this.chosen.gun.averageDamage(this.chosen,t.char).toFixed(1)}`)):this.game.updateTooltip(),document.body.style.cursor=e,0==t.obstacle&&(this.eye.cind=i,this.eye.calculate(),t?this.hoveredChar=t.char:delete this.hoveredChar,this.resetCanvasCache())}}fromCind(t){return[t%this.w,s(t,this.w)]}renderPath(t){let e=this.chosen,i=e?e.cell:null;if(isNaN(+t)||!e||!i||!e.dists||!e.dists[t]||-1==e.dists[t][1])return;if(!e.reachable(t))return;let s=this.game.ctx,a=this.cindToCenter(t);s.beginPath(),e.reachable(t)?s.arc(a[0],a[1],d/4,0,2*Math.PI):(s.moveTo(a[0]-d/4,a[1]-d/4),s.lineTo(a[0]+d/4,a[1]+d/4),s.stroke(),s.beginPath(),s.moveTo(a[0]-d/4,a[1]+d/4),s.lineTo(a[0]+d/4,a[1]-d/4)),s.stroke();let h=e.pathTo(t);s.beginPath(),s.moveTo(...this.cindToCenter(h[0]));for(let t of h)s.lineTo(...this.cindToCenter(t));s.stroke()}cindToScreen(t){return this.fromCind(t).map(t=>t*d)}cindToCenter(t){return this.fromCind(t).map(t=>(t+.5)*d)}calculateFov(t){let[e,i]=this.fromCind(t),s=new Set;return function(t,e,i,s){var a=function(h,n,r,l){if(!(n>=r)){for(var o=Math.round((h-.5)*n),c=Math.ceil((h+.5)*r-.5),d=o;d<=c;d++){var f=t+l.xx*d+l.xy*h,u=e+l.yx*d+l.yy*h;if(i(f,u))d>=h*n&&d<=h*r&&s(f,u);else if(d>=(h-.5)*n&&d-.5<=h*r&&s(f,u),a(h+1,n,(d-.5)/h,l),(n=(d+.5)/h)>=r)return}a(h+1,n,r,l)}},h=[{xx:1,xy:0,yx:0,yy:1},{xx:1,xy:0,yx:0,yy:-1},{xx:-1,xy:0,yx:0,yy:1},{xx:-1,xy:0,yx:0,yy:-1},{xx:0,xy:1,yx:1,yy:0},{xx:0,xy:1,yx:-1,yy:0},{xx:0,xy:-1,yx:1,yy:0},{xx:0,xy:-1,yx:-1,yy:0}];s(t,e);for(var n=0;n<8;n++)a(1,0,1,h[n])}(e,i,(t,e)=>this.cellAt(t,e).obstacle<2,(t,e)=>{for(let i of this.cells[this.cind(t,e)].peeked)s.add(i)}),s}resetCanvasCache(){this.canvasCacheOutdated=!0}updateCanvasCache(){this.canvasCache||(this.canvasCache=e(this.w*d,this.h*d));let t=this.canvasCache.getContext("2d");t.save(),t.clearRect(0,0,this.w*d,this.h*d),t.shadowBlur=4,t.shadowOffsetX=1,t.shadowOffsetY=1,t.shadowColor="#444";for(let e=0;e<this.cells.length;e++){let i=this.cells[e];t.save(),t.translate(...this.cindToScreen(e)),i.render(t),t.restore()}t.restore(),this.canvasCacheOutdated=!1}cancel(){delete this.chosen,this.resetCanvasCache()}peekSides(t){let e=new Set;for(let i=0;i<8;i+=2){let s=t+this.dir8Deltas[i];if(!this.cells[s].obstacle)continue;let a=[t+this.dir8Deltas[(i+6)%8],t+this.dir8Deltas[(i+7)%8]],h=[t+this.dir8Deltas[(i+2)%8],t+this.dir8Deltas[(i+1)%8]];for(let t of[a,h]){0==this.cells[t[0]].obstacle&&this.cells[t[1]].obstacle<=1&&e.add(t[0])}}e.add(t);for(let i of e)this.cells[i].peeked.add(t);return e}obstacles(t){let e=[];for(let i=0;i<8;i+=2){let s=t+this.dir8Deltas[i];e.push(this.cells[s].obstacle)}return e}cover(t,e){if(!t.fov.has(e.cind))return-1;let i=2;for(let n of t.povs){let t=0,r=h(e.at,this.fromCind(n));for(let i=0;i<4;i++){let h=e.cover[i];h<=t||(s=S.dirs8[2*i],a=r,s[0]*a[0]+s[1]*a[1])<-.001&&(t=h)}t<i&&(i=t)}var s,a;return i}endTurn(){return o(this,void 0,void 0,function*(){delete this.chosen,this.game.busy=!0,this.updateCanvasCache(),this.mode==y&&(yield this.teams[u.BLUE].think()),this.mode!=p&&(yield this.teams[u.RED].think());for(let t of this.chars)t.ap=2;this.updateCanvasCache(),this.game.busy=!1})}toggleMode(){return this.mode=(this.mode+1)%3,["[P+AI] 2P 2AI","P+AI [2P] 2AI","P+AI 2P [2AI]"][this.mode]}setMode(t){this.mode=t}get animationSpeed(){return this.game.busy?.5:1.5}declareVictory(t){this.victor=t}}S.dirs8=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];class C{constructor(t){this.game=t,t.fx.push(this)}update(t){return!1}render(t){}}class b extends C{constructor(t,e,i,s,a,h=[0,0]){super(t),this.text=e,this.color=i,this.lifeTime=s,this.at=a,this.vel=h,this.time=0}update(t){return this.time+=t,this.at=a(this.at,this.vel,t),this.time<this.lifeTime}render(t){t.save(),t.fillStyle=this.color,t.shadowColor="black",t.shadowBlur=1,t.shadowOffsetX=1,t.shadowOffsetY=1,t.font='12pt "Courier"',t.textAlign="center";let e=0,i=0;for(let s of this.text.split("|"))t.fillText(s.trim().substr(0,Math.floor(70*this.time)-i),this.at[0],this.at[1]+e),i+=s.length,e+=20;t.restore()}}class P{constructor(t,e,i){var s;this.canvas=t,this.updateUI=e,this.time=0,this.fx=[],this.busy=!1,this.rni=(s=1,(s%=2147483647)<=0&&(s+=2147483646),()=>s=16807*s%2147483647),this.rnf=(()=>this.rni()%1e9/1e9),this.ctx=t.getContext("2d"),this.ctx.imageSmoothingEnabled=!1,this.tooltip=document.getElementById("tooltip"),this.info=document.getElementById("info"),i||(i="\n      ##################################################\n      #      #  a      ++++# + #    ++#  s             #\n      # #    #  +         +#   #    ++#  ++++++++      #\n      #      +  +         +#   #    ++#  ++++++++      #\n      #S#    +  +         +# * #      #                #\n      #      #  +          #   #      #                #\n      # #    #             #   #     a#                #\n      #      #  +          ## ## ######                #\n      #             *                                  #\n      #                                                #\n      #A#    #             #s         #a               #\n      #      #  +          #          #                #\n      #A#    #  #      #a  #  ###    ++                #\n      #      #  #      #   #  #      ++       *        #\n      #G#    #  ########   #  #      +#                #\n      #      #             #          #                #\n      # #    ######  ###########  #####                #\n      #      #++++      ++ # +        #                #\n      #S#    #+            # +   ++   +                #\n      #      #            +#          #                #\n      #         ######g    #       +  #                #\n      #         ######g    #####  #####                #\n      #                    #   g      #      #        +#\n      #      #          +  #                         ++#\n      #G#    #+    *       #+++    +++#   #     #    ++#\n      #      #++      +    #          #g               #\n      # #    ######++###########++##########    ########\n      #                 S+                             #\n      #         +              A+                      #\n      ##################################################\n      "),this.terrain=new S(this,i),this.width=this.canvas.clientWidth,this.height=this.canvas.clientHeight,this.canvas.height=this.height,this.canvas.width=this.width}over(){return!1}update(t){this.lastLoopTimeStamp||(this.lastLoopTimeStamp=t-.001);let e=Math.min(.02,(t-this.lastLoopTimeStamp)/1e3);this.lastLoopTimeStamp=t,this.time+=e,this.terrain.update(e),this.fx=this.fx.filter(t=>t.update(e)),this.render(),this.over()&&this.updateUI()}render(){let t=this.ctx;t.clearRect(0,0,this.width,this.height),this.terrain.render(t);for(let e of this.fx)e.render(t)}text(t,e){let i=a(t,[0,-10]);console.log(i),new b(this,e,"#f00",3,i,[0,-10])}waitForAnim(){return new Promise(t=>{this.blockingAnimationEnd=(()=>t())})}updateTooltip(t,e){this.tooltip.style.display=t?"block":"none",t&&(this.tooltip.style.left=(t[0]+30+this.canvas.offsetLeft).toString(),this.tooltip.style.top=t[1].toString(),this.tooltip.innerHTML=e)}updateInfo(t){this.info.innerHTML=t||(this.terrain.victor>=0?`<H3 style="background:${["RED","BLUE"][this.terrain.victor]}">${["RED","BLUE"][this.terrain.victor]} side victorious</H3>`:"")}}let x,w,T,k,E,R,M,A=0,I=0;function D(t){(w=t)||x.getContext("2d").clearRect(0,0,1200,1200)}function L(){D(w)}function O(){for(let t=0;t<3;t++)t==I?k[t].classList.add("pressed"):k[t].classList.remove("pressed");for(let t=0;t<3;t++)t==A?(T[t].classList.add("pressed"),E[t].style.display="block"):(T[t].classList.remove("pressed"),E[t].style.display="none");M.innerHTML=0==A?"End Turn":"Apply",M.style.visibility=1==A?"hidden":"visible"}return window.onload=function(){x=document.getElementById("main"),M=document.getElementById("endb"),E=["main","help","editor"].map(t=>document.getElementById(t)),T=["playb","helpb","editb"].map(t=>document.getElementById(t));for(let t=0;t<3;t++)T[t].onclick=(e=>{A=t,O()});k=["pai","pp","aiai"].map(t=>document.getElementById(t));for(let t=0;t<3;t++)k[t].onclick=(e=>{I=t,w.terrain.setMode(I),O()});O(),D(new P(x,L)),M.onclick=(t=>{0==A&&w.terrain.endTurn(),2==A&&(w.terrain.init(R.value),A=0,O())}),R=document.getElementById("edit-area"),x.addEventListener("mousedown",t=>{2==t.button?(console.log(w.terrain),w.terrain.cancel()):w.terrain.click(t.offsetX,t.offsetY)}),x.addEventListener("mousemove",t=>{w.terrain.hover(t.offsetX,t.offsetY)}),x.addEventListener("mouseleave",t=>{delete w.terrain.hoveredTile,w.terrain.updateCanvasCache()}),x.addEventListener("mouseenter",t=>{}),x.addEventListener("contextmenu",function(t){t.preventDefault()},!1),document.addEventListener("keyup",t=>{}),document.addEventListener("keydown",t=>{}),function t(e){requestAnimationFrame(i=>{e(i),t(e)})}(t=>{w&&!w.over()&&w.update(t),0==A&&(M.style.visibility=w.busy?"hidden":"visible")}),D(w),console.log(w.terrain.terrainString),R.value=w.terrain.terrainString},t.mouseAt=void 0,t}({});
+var app = (function (exports) {
+  'use strict';
+
+  function min(list, fn) {
+      let minV = Number.MAX_VALUE;
+      let minI = -1;
+      for (let i = 0; i < list.length; i++) {
+          let v = fn(list[i]);
+          if (minV > v) {
+              minV = v;
+              minI = i;
+          }
+      }
+      if (minI >= 0)
+          return { ind: minI, item: list[minI], val: minV };
+  }
+  function max(list, fn) {
+      let r = min(list, t => -fn(t));
+      if (!r)
+          return;
+      r.val = -r.val;
+      return r;
+  }
+  function createCanvas(w, h) {
+      //const canvas = new OffscreenCanvas(w,h);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      return canvas;
+  }
+  function canvasCache(size, draw) {
+      const canvas = createCanvas(...size);
+      const ctx = canvas.getContext("2d");
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#000";
+      draw(ctx);
+      return canvas;
+  }
+  function random(seed) {
+      seed = seed % 2147483647;
+      if (seed <= 0)
+          seed += 2147483646;
+      return () => {
+          return seed = seed * 16807 % 2147483647;
+      };
+  }
+  function eachFrame(fun) {
+      requestAnimationFrame(time => {
+          fun(time);
+          eachFrame(fun);
+      });
+  }
+  function idiv(a, b) {
+      return Math.floor(a / b);
+  }
+
+  /*! *****************************************************************************
+  Copyright (c) Microsoft Corporation. All rights reserved.
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+  this file except in compliance with the License. You may obtain a copy of the
+  License at http://www.apache.org/licenses/LICENSE-2.0
+
+  THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+  WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+  MERCHANTABLITY OR NON-INFRINGEMENT.
+
+  See the Apache Version 2.0 License for specific language governing permissions
+  and limitations under the License.
+  ***************************************************************************** */
+
+  function __awaiter(thisArg, _arguments, P, generator) {
+      return new (P || (P = Promise))(function (resolve, reject) {
+          function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+          function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+          function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+          step((generator = generator.apply(thisArg, _arguments || [])).next());
+      });
+  }
+
+  function sum(a, b, m = 1) {
+      return [a[0] + b[0] * m, a[1] + b[1] * m];
+  }
+  function sub(a, b) {
+      return [a[0] - b[0], a[1] - b[1]];
+  }
+  function length(d) {
+      return Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+  }
+  function norm(v, scale = 1) {
+      let d = length(v) || 1;
+      return [v[0] / d * scale, v[1] / d * scale];
+  }
+  function dist(a, b) {
+      return length([a[0] - b[0], a[1] - b[1]]);
+  }
+  function dot(a, b) {
+      return a[0] * b[0] + a[1] * b[1];
+  }
+  function scale(v, n) {
+      return [v[0] * n, v[1] * n];
+  }
+  function lerp(start, end, amt) {
+      return [
+          start[0] * (1 - amt) + amt * end[0],
+          start[1] * (1 - amt) + amt * end[1]
+      ];
+  }
+  function fromAngle(a) {
+      return [Math.cos(a), Math.sin(a)];
+  }
+
+  //https://gist.github.com/as-f/59bb06ced7e740e11ec7dda9d82717f6#file-shadowcasting-js
+  function shadowcast(cx, cy, transparent, reveal) {
+      /**
+       * Scan one row of one octant.
+       * @param y - distance from the row scanned to the center
+       * @param start - starting slope
+       * @param end - ending slope
+       * @param transform - describes the transfrom to apply on x and y; determines the octant
+       */
+      var scan = function (y, start, end, transform) {
+          if (start >= end) {
+              return;
+          }
+          var xmin = Math.round((y - 0.5) * start);
+          var xmax = Math.ceil((y + 0.5) * end - 0.5);
+          for (var x = xmin; x <= xmax; x++) {
+              var realx = cx + transform.xx * x + transform.xy * y;
+              var realy = cy + transform.yx * x + transform.yy * y;
+              if (transparent(realx, realy)) {
+                  if (x >= y * start && x <= y * end) {
+                      reveal(realx, realy);
+                  }
+              }
+              else {
+                  if (x >= (y - 0.5) * start && x - 0.5 <= y * end) {
+                      reveal(realx, realy);
+                  }
+                  scan(y + 1, start, (x - 0.5) / y, transform);
+                  start = (x + 0.5) / y;
+                  if (start >= end) {
+                      return;
+                  }
+              }
+          }
+          scan(y + 1, start, end, transform);
+      };
+      // An array of transforms, each corresponding to one octant.
+      var transforms = [
+          { xx: 1, xy: 0, yx: 0, yy: 1 },
+          { xx: 1, xy: 0, yx: 0, yy: -1 },
+          { xx: -1, xy: 0, yx: 0, yy: 1 },
+          { xx: -1, xy: 0, yx: 0, yy: -1 },
+          { xx: 0, xy: 1, yx: 1, yy: 0 },
+          { xx: 0, xy: 1, yx: -1, yy: 0 },
+          { xx: 0, xy: -1, yx: 1, yy: 0 },
+          { xx: 0, xy: -1, yx: -1, yy: 0 }
+      ];
+      reveal(cx, cy);
+      // Scan each octant
+      for (var i = 0; i < 8; i++) {
+          scan(1, 0, 1, transforms[i]);
+      }
+  }
+
+  class Cell {
+      constructor(terrain, cid, obstacle, unit) {
+          this.terrain = terrain;
+          this.cid = cid;
+          this.obstacle = obstacle;
+          this.unit = unit;
+          this.xfov = new Set(); /* FOV with respect of peek-out */
+          this.dfov = new Set(); /* direct FOV */
+          this.povs = [];
+          this.peeked = [];
+      }
+      calculatePovAnCover() {
+          if (this.obstacle)
+              return;
+          this.cover = this.terrain.obstacles(this.cid);
+          this.peekSides();
+      }
+      calculateFov() {
+          if (this.opaque)
+              return;
+          let t = this.terrain;
+          let [x, y] = this.at;
+          let visibility = new Set();
+          shadowcast(x, y, (x, y) => !t.cellAt(x, y).opaque, (x, y) => {
+              visibility.add(t.cid(x, y));
+          });
+          this.dfov = visibility;
+      }
+      calculateXFov() {
+          let visibility = new Set();
+          for (let p of this.povs) {
+              for (let visible of p.dfov) {
+                  let visibleTile = this.terrain.cells[visible];
+                  for (let neighbor of visibleTile.peeked)
+                      visibility.add(neighbor.cid);
+              }
+          }
+          this.xfov = visibility;
+      }
+      get at() {
+          return this.terrain.fromCid(this.cid);
+      }
+      dist(other) {
+          return dist(this.at, other.at);
+      }
+      seal() {
+          this.obstacle = 2;
+          delete this.unit;
+          this.goody = 0;
+      }
+      get opaque() {
+          return this.obstacle == 2;
+      }
+      peekSides() {
+          this.povs = [];
+          let t = this.terrain;
+          let cid = this.cid;
+          this.povs.push(this);
+          for (let dir = 0; dir < 8; dir += 2) {
+              let forward = cid + t.dir8Deltas[dir];
+              if (!t.cells[forward].obstacle)
+                  continue;
+              let left = [
+                  cid + t.dir8Deltas[(dir + 6) % 8],
+                  cid + t.dir8Deltas[(dir + 7) % 8]
+              ];
+              let right = [
+                  cid + t.dir8Deltas[(dir + 2) % 8],
+                  cid + t.dir8Deltas[(dir + 1) % 8]
+              ];
+              for (let side of [left, right]) {
+                  let peekable = t.cells[side[0]].obstacle == 0 && t.cells[side[1]].obstacle <= 1;
+                  if (peekable) {
+                      this.povs.push(t.cells[side[0]]);
+                  }
+              }
+          }
+          for (let c of this.povs) {
+              c.peeked.push(this);
+          }
+      }
+  }
+
+  class Gun {
+      constructor(o) {
+          this.damageOptimalRange = [1, 20];
+          this.damage = [4, 5];
+          this.damagePenaltyPerCell = 100;
+          this.accuracyPenaltyMax = 20;
+          this.accuracy = 60;
+          this.accuracyOptimalRange = [1, 1];
+          this.accuracyPenaltyPerCell = 1;
+          this.damagePenaltyMax = 2;
+          this.breach = 0;
+          this.name = "Gun";
+          if (o)
+              Object.assign(this, o);
+      }
+      damagePenalty(dist) {
+          let diff = 0;
+          if (dist < this.damageOptimalRange[0]) {
+              diff = this.damageOptimalRange[0] - dist;
+          }
+          if (dist > this.damageOptimalRange[1]) {
+              diff = dist - this.damageOptimalRange[1];
+          }
+          //debugger;
+          return Math.min(this.damagePenaltyMax, this.damagePenaltyPerCell * diff);
+      }
+      accuracyPenalty(dist) {
+          let diff = 0;
+          if (dist < this.accuracyOptimalRange[0]) {
+              diff = this.accuracyOptimalRange[0] - dist;
+          }
+          if (dist > this.accuracyOptimalRange[1]) {
+              diff = dist - this.accuracyOptimalRange[1];
+          }
+          //debugger;
+          return Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff);
+      }
+      averageDamage(by, target, cell) {
+          if (!cell)
+              cell = target.cell;
+          let dmg = (this.damage[1] + this.damage[0]) * 0.5;
+          dmg -= Math.max(0, target.armor - this.breach);
+          dmg -= this.damagePenalty(by.dist(cell));
+          return Math.max(0, Math.round(dmg * 10) / 10);
+      }
+      damageRoll(by, target, rnf) {
+          let dmg = rnf() * (this.damage[1] - this.damage[0]) + this.damage[0];
+          dmg -= Math.max(0, target.armor - this.breach);
+          dmg -= this.damagePenalty(by.dist(target));
+          return Math.max(0, Math.round(dmg));
+      }
+  }
+  Gun.SNIPER = new Gun({
+      name: "Sniper",
+      damageOptimalRange: [1, 30],
+      damagePenaltyPerCell: 0.1,
+      accuracyOptimalRange: [10, 30],
+      accuracyPenaltyPerCell: 1,
+      breach: 1
+  });
+  Gun.SHOTGUN = new Gun({
+      name: "Shotgun",
+      damage: [6, 7],
+      damageOptimalRange: [1, 1],
+      damagePenaltyMax: 4,
+      damagePenaltyPerCell: 0.3,
+      accuracy: 80,
+      accuracyOptimalRange: [1, 1],
+      accuracyPenaltyPerCell: 5,
+      accuracyPenaltyMax: 40
+  });
+
+  let sniper = `
+Hits accurately and hard at long range, regardless of target's armor.
+Has extra defence, making him nearly untouchable when in cover. 
+Pretty helpess up close and has low HP.
+`;
+  let assault = `
+Psycho with a shotgun. 
+Fast and even has a bit of armor to survive close quater fight a bit longer.
+Can deal a lot of damage, but only up close.
+`;
+  let gunner = `
+Effective in any range and has extra hp.
+Quite slow.
+`;
+
+  var lang = /*#__PURE__*/Object.freeze({
+    sniper: sniper,
+    assault: assault,
+    gunner: gunner
+  });
+
+  class Team {
+      constructor(terrain, faction) {
+          this.terrain = terrain;
+          this.faction = faction;
+          this.fov = new Set();
+      }
+      calculate() {
+          this.strength = [];
+          this.weakness = [];
+          this.distance = [];
+          let t = this.terrain;
+          this.fov.clear();
+          for (let unit of this.units) {
+              for (let cell of unit.cell.xfov)
+                  this.fov.add(cell);
+          }
+          let enemyTeam = this.terrain.teams[1 - this.faction];
+          for (let cid of this.fov) {
+              let cell = this.terrain.cells[cid];
+              for (let enemy of enemyTeam.units) {
+                  let tcell = enemy.cell;
+                  let strength = (4 - t.cover(cell, tcell)) % 5;
+                  if (!(this.strength[cid] > strength))
+                      this.strength[cid] = strength;
+                  let weakness = (4 - t.cover(tcell, cell)) % 5;
+                  if (!(this.weakness[cid] > weakness))
+                      this.weakness[cid] = weakness;
+                  if (strength > 0 || weakness > 0) {
+                      let distance = cell.dist(tcell);
+                      if (!(this.distance[cid] <= distance))
+                          this.distance[cid] = distance;
+                  }
+              }
+          }
+      }
+      think() {
+          return __awaiter(this, void 0, void 0, function* () {
+              this.terrain.aiTurn = true;
+              this.calculate();
+              for (let unit of this.terrain.units) {
+                  if (unit.team == this) {
+                      yield unit.think();
+                  }
+              }
+              this.terrain.aiTurn = false;
+          });
+      }
+      get units() {
+          return this.terrain.units.filter(c => c.team == this);
+      }
+      get enemy() {
+          return this.terrain.teams[1 - this.faction];
+      }
+      get name() {
+          return ["RED", "BLUE"][this.faction];
+      }
+      get color() {
+          return ["RED", "BLUE"][this.faction];
+      }
+  }
+  Team.RED = 0;
+  Team.BLUE = 1;
+
+  class Unit {
+      constructor(terrain, kind, team, cid, gun = new Gun()) {
+          this.terrain = terrain;
+          this.kind = kind;
+          this.team = team;
+          this.cid = cid;
+          this.gun = gun;
+          this.speed = 5;
+          this.maxHP = 10;
+          this.hp = this.maxHP;
+          this.ap = 2;
+          this.armor = 0;
+          this.sight = 20;
+          this.def = 0;
+          if (kind != Unit.EYE)
+              terrain.units.push(this);
+          switch (kind) {
+              case Unit.GUNNER:
+                  this.speed = 4;
+                  this.hp = 14;
+                  break;
+              case Unit.ASSAULT:
+                  this.speed = 6;
+                  this.armor = 1;
+                  this.gun = Gun.SHOTGUN;
+                  break;
+              case Unit.SNIPER:
+                  this.hp = 7;
+                  this.def = 10;
+                  this.gun = Gun.SNIPER;
+                  break;
+          }
+          //console.log(this);
+          this.maxHP = this.hp;
+      }
+      static from(terrain, letter, cid) {
+          let io = Unit.letters.indexOf(letter);
+          if (io >= 0)
+              return new Unit(terrain, io, terrain.teams[Team.RED], cid);
+          io = Unit.letters.indexOf(letter.toLowerCase());
+          if (io >= 0)
+              return new Unit(terrain, io, terrain.teams[Team.BLUE], cid);
+      }
+      //sprites: { [key: number]: OffscreenCanvas } = {};
+      get blue() {
+          return this.team == this.terrain.we;
+      }
+      pathTo(to) {
+          let cid = to.cid;
+          let path = [cid];
+          while (true) {
+              cid = this.dists[cid][1];
+              if (cid < 0)
+                  break;
+              path.push(cid);
+          }
+          return path.reverse().map(cid => this.terrain.cells[cid]);
+      }
+      get strokeColor() {
+          return this.blue ? "#00a" : "#a00";
+      }
+      get x() {
+          return this.cid % this.terrain.w;
+      }
+      get y() {
+          return idiv(this.cid, this.terrain.w);
+      }
+      get cell() {
+          return this.terrain.cells[this.cid];
+      }
+      reachable(cell) {
+          return this.apCost(cell) <= this.ap;
+      }
+      calculateDists() {
+          this.dists = this.terrain.calcDists(this.cid);
+      }
+      calculate() {
+          this.calculateDists();
+      }
+      cover(target) {
+          return this.terrain.cover(this.cell, target);
+      }
+      get at() {
+          return this.terrain.fromCid(this.cid);
+      }
+      apCost(cell) {
+          if (!this.dists)
+              return Number.MAX_VALUE;
+          let l = this.dists[cell.cid][0];
+          let moves = Math.ceil(l / this.speed);
+          return moves;
+      }
+      canShoot() {
+          return this.ap > 0;
+      }
+      hitChance(target, cell) {
+          if (!this.cell.xfov.has((cell || target.cell).cid))
+              return 0;
+          let cover = this.cover(cell || target.cell);
+          if (cover == -1)
+              return 0;
+          let accuracy = this.gun.accuracy;
+          let dodge = target.def;
+          let chance = Math.round(accuracy -
+              cover * 20 -
+              dodge -
+              this.gun.accuracyPenalty(this.dist(target)));
+          return chance;
+      }
+      die() {
+          this.terrain.units = this.terrain.units.filter(c => c.hp > 0);
+          delete this.cell.unit;
+          if (this.team.units.length == 0) {
+              this.terrain.declareVictory(this.team.enemy);
+          }
+      }
+      takeDamage(dmg) {
+          this.hp = Math.max(0, this.hp - dmg);
+          if (this.hp <= 0) {
+              this.die();
+          }
+          this.onChange();
+      }
+      onChange() {
+          this.terrain.animate({ char: this });
+      }
+      shoot(cell) {
+          return __awaiter(this, void 0, void 0, function* () {
+              if (!cell)
+                  return false;
+              let target = cell.unit;
+              if (!target)
+                  return false;
+              let chance = this.hitChance(target);
+              if (chance == 0)
+                  return false;
+              let success = this.terrain.rni() % 100 < chance;
+              this.ap = 0;
+              let dmg = 0;
+              if (success) {
+                  dmg = this.gun.damageRoll(this, target, this.terrain.rnf);
+              }
+              yield this.animateShoot(target.cid, dmg);
+              target.takeDamage(dmg);
+              if (target.hp <= 0)
+                  this.team.calculate();
+              return true;
+          });
+      }
+      teleport(to) {
+          if (this.cell.cid == to.cid)
+              return;
+          delete this.cell.unit;
+          this.cid = to.cid;
+          this.cell.unit = this;
+          this.calculate();
+      }
+      move(to) {
+          return __awaiter(this, void 0, void 0, function* () {
+              if (to == this.cell || !to)
+                  return false;
+              this.ap -= this.apCost(to);
+              let path = this.pathTo(to);
+              let enemies = this.team.enemy.units;
+              let owPoints = [];
+              for (let enemy of enemies) {
+                  if (enemy.ap == 0)
+                      continue;
+                  let bestMoment = max(path, step => enemy.averageDamage(this, step));
+                  if (bestMoment && bestMoment.val > 0) {
+                      owPoints.push({ moment: bestMoment.ind, enemy });
+                  }
+              }
+              owPoints = owPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
+              for (let owPoint of owPoints) {
+                  let place = path[owPoint.moment];
+                  yield this.animateWalk(this.pathTo(place));
+                  this.teleport(place);
+                  yield owPoint.enemy.shoot(place);
+              }
+              yield this.animateWalk(this.pathTo(to));
+              this.teleport(to);
+              if (this.cell.goody) {
+                  this.hp = this.maxHP;
+                  this.cell.goody = 0;
+              }
+              return true;
+          });
+      }
+      animateWalk(path) {
+          return __awaiter(this, void 0, void 0, function* () {
+              if (path.length <= 1)
+                  return;
+              yield this.terrain.animate({ anim: "walk", char: this, path });
+          });
+      }
+      animateShoot(tcid, damage) {
+          return __awaiter(this, void 0, void 0, function* () {
+              yield this.terrain.animate({
+                  anim: "shoot",
+                  from: this.cid,
+                  to: tcid,
+                  damage
+              });
+          });
+      }
+      canDamage(target) {
+          return (target &&
+              this.team != target.team &&
+              this.cell.xfov.has(target.cid) &&
+              this.canShoot());
+      }
+      bestPosition() {
+          let team = this.team;
+          this.calculate();
+          let bestScore = -100;
+          let bestAt;
+          for (let i in this.dists) {
+              let d = this.dists[i][0];
+              if (d > this.speed * this.ap)
+                  continue;
+              let score = team.strength[i] -
+                  team.weakness[i] -
+                  idiv(d, this.speed) * 0.5 -
+                  d * 0.001;
+              if (this.kind == Unit.ASSAULT)
+                  score -= team.distance[i] * 0.1;
+              if (this.kind == Unit.SNIPER)
+                  score += team.distance[i] * 0.1;
+              if (score > bestScore) {
+                  bestScore = score;
+                  bestAt = Number(i);
+              }
+          }
+          return this.terrain.cells[bestAt];
+      }
+      averageDamage(tchar, cell) {
+          let hitChance = this.hitChance(tchar, cell);
+          return hitChance * this.gun.averageDamage(this, tchar, cell);
+      }
+      bestTarget() {
+          let bestScore = -100;
+          let bestAt = null;
+          for (let tchar of this.terrain.units) {
+              if (tchar.team == this.team || tchar.hp <= 0)
+                  continue;
+              let score = this.averageDamage(tchar);
+              if (score > bestScore) {
+                  bestScore = score;
+                  bestAt = tchar.cell;
+              }
+          }
+          return bestAt;
+      }
+      think() {
+          return __awaiter(this, void 0, void 0, function* () {
+              yield this.move(this.bestPosition());
+              if (this.ap > 0) {
+                  yield this.shoot(this.bestTarget());
+              }
+          });
+      }
+      dist(other) {
+          return dist(this.at, other.at);
+      }
+      info() {
+          let name = [, "gunner", "assault", "sniper"][this.kind];
+          return `${name.toUpperCase()} <b>${this.hp}HP</b> ${lang[name]}`;
+      }
+      get alive() {
+          return this.hp > 0;
+      }
+  }
+  Unit.EYE = -1;
+  Unit.GUNNER = 1;
+  Unit.ASSAULT = 2;
+  Unit.SNIPER = 3;
+  Unit.RECON = 4;
+  Unit.MEDIC = 5;
+  Unit.HEAVY = 6;
+  Unit.COMMANDER = 7;
+  Unit.letters = "`gasrmhc".split("");
+
+  class Terrain {
+      constructor(terrainString, animate) {
+          this.terrainString = terrainString;
+          this.animate = animate;
+          this.aiTurn = false;
+          this.rni = random(1);
+          this.rnf = () => (this.rni() % 1e9) / 1e9;
+          this.init(terrainString);
+      }
+      init(terrainString) {
+          let lines = terrainString
+              .split("\n")
+              .map(s => s.trim())
+              .filter(s => s.length > 0);
+          this.h = lines.length;
+          this.w = Math.max(...lines.map(s => s.length));
+          this.cells = [];
+          this.units = [];
+          this.teams = [];
+          for (let i = 0; i < 2; i++) {
+              let team = new Team(this, i);
+              this.teams[i] = team;
+          }
+          for (let y = 0; y < this.h; y++) {
+              delete this.victor;
+              let line = lines[y];
+              for (let x = 0; x < this.w; x++) {
+                  let cid = x + y * this.w;
+                  let unit = line[x] || " ";
+                  let cell = new Cell(this, cid, ["+", "#"].indexOf(unit) + 1, Unit.from(this, unit, this.cid(x, y)));
+                  if (unit == "*")
+                      cell.goody = 1;
+                  this.cells[cid] = cell;
+              }
+          }
+          for (let i = 0; i < this.w; i++) {
+              this.seal(i, 0);
+              this.seal(i, this.h - 1);
+          }
+          for (let i = 0; i < this.h; i++) {
+              this.seal(0, i);
+              this.seal(this.w - 1, i);
+          }
+          this.dir8Deltas = Terrain.dirs8.map(v => v[0] + v[1] * this.w);
+          for (let c of this.cells) {
+              if (!c.obstacle)
+                  c.calculatePovAnCover();
+          }
+          for (let c of this.cells) {
+              if (!c.obstacle) {
+                  c.calculatePovAnCover();
+                  c.calculateFov();
+              }
+          }
+          for (let c of this.cells) {
+              if (!c.obstacle)
+                  c.calculateXFov();
+          }
+      }
+      seal(x, y) {
+          this.cells[this.cid(x, y)].seal();
+      }
+      calcDists(x, y) {
+          let fromi = isNaN(+y) ? x : this.cid(x, y);
+          let dists = this.cells.map(_ => [Number.MAX_VALUE, -1]);
+          dists[fromi] = [0, -1];
+          let todo = [fromi];
+          while (todo.length > 0) {
+              let curi = todo.shift();
+              let curl = dists[curi][0];
+              for (let dir = 0; dir < 8; dir++) {
+                  let diagonal = dir % 2;
+                  let nexti = this.dir8Deltas[dir] + curi;
+                  let blocked = !!(this.cells[nexti].obstacle || this.cells[nexti].unit);
+                  if (diagonal &&
+                      (this.cells[curi + this.dir8Deltas[(dir + 1) % 8]].obstacle ||
+                          this.cells[curi + this.dir8Deltas[(dir + 7) % 8]].obstacle))
+                      blocked = true;
+                  if (!blocked) {
+                      let next = dists[nexti];
+                      let plusl = diagonal ? 1.414 : 1;
+                      if (next[0] > curl + plusl) {
+                          dists[nexti] = [curl + plusl, curi];
+                          todo.push(nexti);
+                      }
+                  }
+              }
+          }
+          return dists;
+      }
+      cid(x, y) {
+          return x + y * this.w;
+      }
+      cellAt(x, y) {
+          return this.cells[this.cid(x, y)];
+      }
+      fromCid(ind) {
+          return [ind % this.w, idiv(ind, this.w)];
+      }
+      calculateFov(cid) {
+          let [x, y] = this.fromCid(cid);
+          let visibility = new Set();
+          shadowcast(x, y, (x, y) => !this.cellAt(x, y).opaque, (x, y) => {
+              for (let pov of this.cells[this.cid(x, y)].peeked)
+                  visibility.add(pov.cid);
+          });
+          return visibility;
+      }
+      calculateDirectFov(cid) {
+          let [x, y] = this.fromCid(cid);
+          let visibility = new Set();
+          shadowcast(x, y, (x, y) => !this.cellAt(x, y).opaque, (x, y) => {
+              visibility.add(this.cid(x, y));
+          });
+          return visibility;
+      }
+      obstacles(cid) {
+          let obstacles = [];
+          for (let dir = 0; dir < 8; dir += 2) {
+              let forward = cid + this.dir8Deltas[dir];
+              obstacles.push(this.cells[forward].obstacle);
+          }
+          return obstacles;
+      }
+      cover(from, target) {
+          let visible = from.xfov.has(target.cid);
+          if (!visible)
+              return -1;
+          let worstCover = 2;
+          for (let pov of from.povs) {
+              let bestCover = 0;
+              let delta = sub(target.at, pov.at);
+              for (let i = 0; i < 4; i++) {
+                  let cover = target.cover[i];
+                  if (cover <= bestCover)
+                      continue;
+                  let dot$1 = dot(Terrain.dirs8[i * 2], delta);
+                  if (dot$1 < -0.001)
+                      bestCover = cover;
+              }
+              if (bestCover < worstCover)
+                  worstCover = bestCover;
+          }
+          return worstCover;
+      }
+      declareVictory(team) {
+          this.victor = team;
+      }
+      get we() {
+          return this.teams[Team.BLUE];
+      }
+  }
+  Terrain.dirs8 = [
+      [0, -1],
+      [1, -1],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+      [-1, 1],
+      [-1, 0],
+      [-1, -1]
+  ];
+
+  const tileSize = 24;
+
+  class MovingText {
+      constructor(text, color, lifeTime, at, vel = [0, 0]) {
+          this.text = text;
+          this.color = color;
+          this.lifeTime = lifeTime;
+          this.at = at;
+          this.vel = vel;
+          this.time = 0;
+      }
+      update(dTime) {
+          this.time += dTime;
+          this.at = sum(this.at, this.vel, dTime);
+          return this.time < this.lifeTime;
+      }
+      render(ctx) {
+          ctx.save();
+          ctx.fillStyle = this.color;
+          ctx.shadowColor = `black`;
+          ctx.shadowBlur = 1;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.font = `12pt "Courier"`;
+          ctx.textAlign = "center";
+          let y = 0;
+          let l = 0;
+          for (let line of this.text.split("|")) {
+              ctx.fillText(line.trim().substr(0, Math.floor(this.time * 70) - l), this.at[0], this.at[1] + y);
+              l += line.length;
+              y += 20;
+          }
+          ctx.restore();
+      }
+  }
+
+  const dashInterval = 4;
+  class Doll {
+      constructor(unit, renderer) {
+          this.unit = unit;
+          this.at = renderer.cidToScreen(unit.cid);
+      }
+  }
+  class RenderSchematic {
+      constructor(game, canvas) {
+          this.game = game;
+          this.canvas = canvas;
+          this.canvasCacheOutdated = false;
+          this.anim = [];
+          this.animQueue = [];
+          this.dolls = [];
+          this.dollCache = {};
+          this.width = this.canvas.clientWidth;
+          this.height = this.canvas.clientHeight;
+          this.canvas.height = this.height;
+          this.canvas.width = this.width;
+          this.synch();
+          this.updateCanvasCache();
+      }
+      synch() {
+          this.dolls = this.terrain.units.map(unit => new Doll(unit, this));
+      }
+      get terrain() {
+          return this.game.terrain;
+      }
+      update(dTime) {
+          let anims = this.anim;
+          this.anim = [];
+          anims = anims.filter(fx => {
+              return fx.update(dTime);
+          });
+          this.anim = this.anim.concat(anims);
+          if (this.animQueue.length > 0 && !this.animQueue[0].update(dTime))
+              this.animQueue.shift();
+          if (this.animQueue.length == 0 && this.blockingAnimationEnd) {
+              this.blockingAnimationEnd();
+              delete this.blockingAnimationEnd;
+          }
+          this.dolls = this.dolls.filter(d => d.unit.alive);
+      }
+      render(ctx) {
+          ctx.clearRect(0, 0, this.width, this.height);
+          let t = this.terrain;
+          if (!this.canvasCache || this.canvasCacheOutdated)
+              this.updateCanvasCache();
+          ctx.clearRect(0, 0, t.w * tileSize, t.h * tileSize);
+          ctx.drawImage(this.canvasCache, 0, 0);
+          for (let d of this.dolls) {
+              this.renderDoll(ctx, d);
+          }
+          for (let fx of this.anim)
+              if (fx.render)
+                  fx.render(ctx);
+          if (this.animQueue.length > 0 && this.animQueue[0].render)
+              this.animQueue[0].render(ctx);
+          if (!this.busy)
+              this.renderPath(ctx, this.game.hoveredCell);
+          return this.animQueue.length > 0;
+      }
+      renderPath(ctx, cell) {
+          let unit = this.game.chosen;
+          if (!unit ||
+              !cell ||
+              !unit.dists ||
+              !unit.dists[cell.cid] ||
+              unit.dists[cell.cid][1] == -1)
+              return;
+          if (!unit.reachable(cell))
+              return;
+          let end = this.cidToCenter(cell.cid);
+          ctx.beginPath();
+          if (unit.reachable(cell))
+              ctx.arc(end[0], end[1], tileSize / 4, 0, Math.PI * 2);
+          else {
+              ctx.moveTo(end[0] - tileSize / 4, end[1] - tileSize / 4);
+              ctx.lineTo(end[0] + tileSize / 4, end[1] + tileSize / 4);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(end[0] - tileSize / 4, end[1] + tileSize / 4);
+              ctx.lineTo(end[0] + tileSize / 4, end[1] - tileSize / 4);
+          }
+          ctx.stroke();
+          let path = unit.pathTo(cell);
+          ctx.beginPath();
+          ctx.moveTo(...this.cidToCenter(path[0].cid));
+          for (let i of path)
+              ctx.lineTo(...this.cidToCenter(i.cid));
+          ctx.stroke();
+      }
+      renderThreats(ctx, cell) {
+          let t = this.terrain;
+          let i = cell.cid;
+          if (!t.teams[Team.RED].strength)
+              return;
+          ctx.strokeStyle = "#800";
+          ctx.lineWidth = t.teams[Team.RED].strength[i] == 4 ? 3 : 1;
+          ctx.beginPath();
+          ctx.moveTo(3.5, 3.5);
+          ctx.lineTo(3.5, 3.5 + 3 * t.teams[Team.RED].strength[i]);
+          ctx.stroke();
+          ctx.strokeStyle = "#008";
+          ctx.lineWidth = t.teams[Team.RED].weakness[i] == 4 ? 3 : 1;
+          ctx.beginPath();
+          ctx.moveTo(3.5, 3.5);
+          ctx.lineTo(3.5 + 3 * t.teams[Team.RED].weakness[i], 3.5);
+          ctx.stroke();
+      }
+      renderCell(ctx, cell) {
+          let g = this.game;
+          let at = this.cidToScreen(cell.cid);
+          let sprite = [, RenderSchematic.lowTile, RenderSchematic.highTile][cell.obstacle];
+          ctx.save();
+          ctx.shadowColor = `rgba(0,0,0,0)`;
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 2;
+          if (g.hoveredCell) {
+              let xfov = g.hoveredCell.xfov.has(cell.cid);
+              let dfov = g.hoveredCell.dfov.has(cell.cid);
+              if (!dfov) {
+                  ctx.fillStyle = `rgba(${xfov ? "50,50,0,0.04" : "0,0,50,0.1"})`;
+                  ctx.fillRect(at[0], at[1], tileSize, tileSize);
+              }
+          }
+          if (g.chosen && g.chosen.dists && !this.busy) {
+              let moves = g.chosen.apCost(cell);
+              if (moves > 0 && moves <= g.chosen.ap) {
+                  let img = [, RenderSchematic.ap1Sprite, RenderSchematic.ap2Sprite][Math.floor(moves)];
+                  if (img)
+                      ctx.drawImage(img, at[0], at[1]);
+              }
+          }
+          if (
+              cell.povs &&
+              cell.peeked.includes(this.game.hoveredCell)) {
+              ctx.strokeStyle = `rgba(0,0,0,0.5)`;
+              ctx.lineWidth = 0.5;
+              ctx.beginPath();
+              ctx.arc(at[0] + tileSize / 2, at[1] + tileSize / 2, tileSize / 4, 0, Math.PI * 2);
+              ctx.stroke();
+          }
+          ctx.restore();
+          if (cell.goody) {
+              ctx.translate(...at);
+              ctx.fillStyle = "#080";
+              ctx.fillRect(tileSize * 0.35, 0, tileSize * 0.3, tileSize);
+              ctx.fillRect(0, tileSize * 0.35, tileSize, tileSize * 0.3);
+              ctx.translate(...scale(at, -1));
+          }
+          if (sprite)
+              ctx.drawImage(sprite, at[0], at[1]);
+      }
+      renderDoll(ctx, doll) {
+          ctx.save();
+          ctx.translate(...doll.at);
+          this.useDollCache(ctx, doll);
+          if (doll.unit == this.game.chosen) {
+              this.outline(ctx, doll, Math.sin(new Date().getTime() / 100) + 1);
+          }
+          else if (doll.unit == this.game.hoveredChar) {
+              this.outline(ctx, doll, 1.5);
+          }
+          ctx.restore();
+      }
+      outline(ctx, doll, width = 2) {
+          ctx.save();
+          ctx.shadowColor = `rgba(0,0,0,0)`;
+          //console.assert(tile.unit.blue)
+          ctx.strokeStyle = doll.unit.strokeColor;
+          ctx.lineWidth = width;
+          ctx.beginPath();
+          ctx.arc(tileSize / 2, tileSize / 2, tileSize * 0.4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+      }
+      useDollCache(ctx, doll) {
+          let unit = doll.unit;
+          let state = ["cid", "hp", "ap", "kind", "faction"].map(key => unit[key]);
+          state.push(this.dollTint(doll));
+          let key = state.join(",");
+          if (!(key in this.dollCache))
+              this.dollCache[key] = canvasCache([tileSize, tileSize], ctx => this.renderDollBody(ctx, doll, this.dollTint(doll)));
+          ctx.drawImage(this.dollCache[key], 0, 0);
+      }
+      dollTint(doll) {
+          if (this.busy || this.terrain.aiTurn)
+              return 0;
+          let unit = doll.unit;
+          let flankNum = 0;
+          let hover = this.game.hoveredCell;
+          if (hover && hover.xfov) {
+              let visible = hover.xfov.has(unit.cid) || unit.team == this.game.lastSelectedFaction;
+              if (visible)
+                  flankNum =
+                      (this.terrain.cover(unit.cell, hover) == 0 ? 1 : 0) +
+                          (this.terrain.cover(hover, unit.cell) == 0 ? 2 : 0);
+              else
+                  flankNum = 4;
+          }
+          if (!this.game.hoveredCell)
+              flankNum = 0;
+          return flankNum;
+      }
+      renderDollBody(ctx, doll, tint) {
+          let unit = doll.unit;
+          ctx.fillStyle = ["#fff", "#fba", "#cfa", "#ffa", "#ccc"][tint];
+          ctx.strokeStyle = unit.strokeColor;
+          ctx.shadowColor = "#444";
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.shadowBlur = 4;
+          ctx.beginPath();
+          ctx.arc(0.5 * tileSize, 0.5 * tileSize, tileSize * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowColor = `rgba(0,0,0,0)`;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < unit.hp; i++) {
+              let angle = Math.PI * (1 - i / (unit.maxHP - 1));
+              let v = fromAngle(angle);
+              ctx.beginPath();
+              ctx.moveTo((0.5 + v[0] * 0.4) * tileSize, (0.5 + v[1] * 0.4) * tileSize);
+              ctx.lineTo((0.5 + v[0] * 0.5) * tileSize, (0.5 + v[1] * 0.5) * tileSize);
+              ctx.stroke();
+          }
+          ctx.lineWidth = 1;
+          ctx.fillStyle = unit.strokeColor;
+          ctx.textAlign = "center";
+          ctx.font = `bold ${tileSize / 2}pt Courier`;
+          ctx.fillText(Unit.letters[unit.kind].toUpperCase(), 0.5 * tileSize, 0.66 * tileSize);
+          ctx.stroke();
+          if (unit.ap > 0) {
+              ctx.fillStyle = doll.unit.strokeColor;
+              ctx.beginPath();
+              ctx.moveTo(1, 1);
+              ctx.lineTo(6, 1);
+              ctx.lineTo(1, 6);
+              ctx.closePath();
+              ctx.fill();
+              if (unit.ap > 1) {
+                  ctx.beginPath();
+                  ctx.moveTo(tileSize - 1, 1);
+                  ctx.lineTo(tileSize - 6, 1);
+                  ctx.lineTo(+tileSize - 1, 6);
+                  ctx.closePath();
+                  ctx.fill();
+              }
+          }
+      }
+      cidToScreen(ind) {
+          return this.terrain.fromCid(ind).map(a => a * tileSize);
+      }
+      cidToCenter(ind) {
+          return this.terrain.fromCid(ind).map(a => (a + 0.5) * tileSize);
+      }
+      cidScreen(x, y) {
+          return this.terrain.cid(idiv(x, tileSize), idiv(y, tileSize));
+      }
+      cellAtScreen(x, y) {
+          return this.terrain.cells[this.cidScreen(x, y)];
+      }
+      get animationSpeed() {
+          return this.terrain.aiTurn ? 0.5 : 0.5;
+      }
+      updateCanvasCache() {
+          if (!this.canvasCache)
+              this.canvasCache = createCanvas(this.terrain.w * tileSize, this.terrain.h * tileSize);
+          let ctx = this.canvasCache.getContext("2d");
+          ctx.save();
+          ctx.clearRect(0, 0, this.terrain.w * tileSize, this.terrain.h * tileSize);
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.shadowColor = "#444";
+          for (let i = 0; i < this.terrain.cells.length; i++) {
+              let cell = this.terrain.cells[i];
+              ctx.save();
+              this.renderCell(ctx, cell);
+          }
+          ctx.restore();
+          this.canvasCacheOutdated = false;
+      }
+      resetCanvasCache() {
+          this.canvasCacheOutdated = true;
+      }
+      text(from, text) {
+          let at = sum(from, [0, -10]);
+          this.anim.push(new MovingText(text, "#f00", 3, at, [0, -10]));
+      }
+      renderBullet(ctx, [from, to], time) {
+          ctx.beginPath();
+          let delta = norm(sub(to, from), -20);
+          let at = lerp(from, to, time);
+          let tail = sum(at, delta);
+          var grad = ctx.createLinearGradient(tail[0], tail[1], at[0], at[1]);
+          grad.addColorStop(0, `rgba(0,0,0,0)`);
+          grad.addColorStop(1, `rgba(0,0,0,1)`);
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = grad;
+          ctx.moveTo(...tail);
+          ctx.lineTo(...at);
+          ctx.stroke();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#000";
+      }
+      shoot(from, to, dmg) {
+          let tiles = [from, to].map(v => this.terrain.cells[v]);
+          let points;
+          let a, b;
+          completely: for (a of tiles[0].povs)
+              for (b of tiles[1].povs) {
+                  if (a.dfov.has(b.cid)) {
+                      points = [a, b].map(v => this.cidToCenter(v.cid));
+                      break completely;
+                  }
+              }
+          let fdoll = this.dollAt(from);
+          let tdoll = this.dollAt(to);
+          let time = 0;
+          if (a.cid == from && b.cid == to) {
+              time = 1;
+          }
+          this.animQueue.push({
+              update: dTime => {
+                  if (time < 1 || time > 2) {
+                      let peek = (time < 1 ? time : 3 - time) * 0.6;
+                      for (let i = 0; i < 2; i++) {
+                          let doll = [fdoll, tdoll][i];
+                          doll.at = lerp(this.cidToScreen([from, to][i]), sub(points[i], [tileSize / 2, tileSize / 2]), peek);
+                      }
+                      time += dTime * this.animationSpeed * 10;
+                  }
+                  else {
+                      time +=
+                          dTime *
+                              Math.min(10, (1000 / dist(...points)) * this.animationSpeed);
+                  }
+                  if (time > 3) {
+                      this.text(points[1], dmg > 0 ? `-${dmg}` : "MISS");
+                      fdoll.at = this.cidToScreen(fdoll.unit.cid);
+                      tdoll.at = this.cidToScreen(tdoll.unit.cid);
+                      return false;
+                  }
+                  return true;
+              },
+              render: (ctx) => {
+                  if (time > 1 && time < 2)
+                      this.renderBullet(ctx, points, time - 1);
+              }
+          });
+      }
+      walk(doll, steps) {
+          let path = steps.map(v => this.cidToScreen(v.cid));
+          let time = 0;
+          this.animQueue.push({
+              update: dTime => {
+                  time += dTime * 15 * this.animationSpeed;
+                  if (!path[Math.floor(time) + 1]) {
+                      doll.at = path[path.length - 1];
+                      return false;
+                  }
+                  doll.at = lerp(path[Math.floor(time)], path[Math.floor(time) + 1], time - Math.floor(time));
+                  return true;
+              }
+          });
+      }
+      dollOf(unit) {
+          return this.dolls.find(d => d.unit == unit);
+      }
+      dollAt(cid) {
+          return this.dolls.find(d => d.unit.cid == cid);
+      }
+      draw(o) {
+          return __awaiter(this, void 0, void 0, function* () {
+              switch (o.anim) {
+                  case "walk":
+                      this.walk(this.dollOf(o.char), o.path);
+                      break;
+                  case "shoot":
+                      this.shoot(o.from, o.to, o.damage);
+                      break;
+              }
+              yield this.waitForAnim();
+          });
+      }
+      waitForAnim() {
+          return new Promise(resolve => {
+              this.blockingAnimationEnd = () => resolve();
+          });
+      }
+      get busy() {
+          return this.animQueue.length > 0;
+      }
+  }
+  RenderSchematic.ap1Sprite = canvasCache([tileSize, tileSize], ctx => {
+      ctx.strokeStyle = "#555";
+      ctx.strokeRect(4.5, 4.5, tileSize - 8, tileSize - 8);
+  });
+  RenderSchematic.ap2Sprite = canvasCache([tileSize, tileSize], ctx => {
+      ctx.strokeStyle = "#bbb";
+      ctx.strokeRect(4.5, 4.5, tileSize - 8, tileSize - 8);
+  });
+  RenderSchematic.hiddenSprite = canvasCache([tileSize, tileSize], ctx => {
+      ctx.fillStyle = `rgba(0,0,0,0.12)`;
+      ctx.fillRect(0, 0, tileSize, tileSize);
+  });
+  RenderSchematic.dashPattern = canvasCache([dashInterval, dashInterval], ctx => {
+      for (let i = 0; i < dashInterval; i++) {
+          ctx.fillRect(i, i, 1, 1);
+      }
+  });
+  RenderSchematic.crossPattern = canvasCache([3, 3], ctx => {
+      for (let i = 0; i < dashInterval; i++) {
+          ctx.fillRect(dashInterval - i - 1, i, 1, 1);
+          ctx.fillRect(i, i, 1, 1);
+      }
+  });
+  RenderSchematic.highTile = canvasCache([tileSize, tileSize], ctx => {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, tileSize, tileSize);
+  });
+  RenderSchematic.lowTile = canvasCache([tileSize, tileSize], ctx => {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, tileSize, tileSize);
+      ctx.fillStyle = ctx.createPattern(RenderSchematic.dashPattern, "repeat");
+      ctx.fillRect(0, 0, tileSize, tileSize);
+  });
+  RenderSchematic.emptyTile = canvasCache([1, 1], ctx => { });
+
+  class Game {
+      constructor(canvas, updateUI, terrainString) {
+          this.canvas = canvas;
+          this.updateUI = updateUI;
+          this.time = 0;
+          this.mode = Game.PAI;
+          this.ctx = canvas.getContext("2d");
+          this.ctx.imageSmoothingEnabled = false;
+          this.tooltip = document.getElementById("tooltip");
+          this.info = document.getElementById("info");
+          if (!terrainString)
+              terrainString = `
+      ##################################################
+      #      #  a      ++++# + #    ++#  s             #
+      # #    #  +         +#   #    ++#  ++++++++      #
+      #      +  +         +#   #    ++#  ++++++++      #
+      #S#    +  +         +# * #      #                #
+      #      #  +          #   #      #                #
+      # #    #             #   #     a#                #
+      #      #  +          ## ## ######                #
+      #             *                                  #
+      #                                                #
+      #A#    #          A  #s         #a               #
+      #      #  +          #          #                #
+      #A#    #  #      #a  #  ###    ++                #
+      #      #  #      #   #  #      ++       *        #
+      #G#    #  ########   #  #      +#                #
+      #      #             #          #                #
+      # #    ######  ###########  #####                #
+      #      #++++      ++ # +        #                #
+      #S#    #+            # +   ++   +                #
+      #      #            +#          #                #
+      #         ######g    #       +  #                #
+      #         ######g    #####  #####                #
+      #                    #   g      #      #        +#
+      #      #          +  #                         ++#
+      #G#    #+    *       #+++    +++#   #     #    ++#
+      #      #++      +    #          #g               #
+      # #    ######++###########++##########    ########
+      #                 S+                             #
+      #         +              A+                      #
+      ##################################################
+      `;
+          this.terrain = new Terrain(terrainString, (o) => this.renderer.draw(o));
+          //this.eye = new Char(this, Char.EYE, Char.BLUE, 0);
+          this.renderer = new RenderSchematic(this, this.canvas);
+      }
+      over() {
+          return false;
+      }
+      update(timeStamp) {
+          if (!this.lastLoopTimeStamp)
+              this.lastLoopTimeStamp = timeStamp - 0.001;
+          let dTime = Math.min(0.02, (timeStamp - this.lastLoopTimeStamp) / 1000);
+          this.lastLoopTimeStamp = timeStamp;
+          this.time += dTime;
+          this.renderer.update(dTime);
+          this.renderer.render(this.ctx);
+          if (this.over())
+              this.updateUI();
+      }
+      updateTooltip(at, text) {
+          this.tooltip.style.display = at ? "block" : "none";
+          if (at) {
+              this.tooltip.style.left = (at[0] +
+                  30 +
+                  this.canvas.offsetLeft).toString();
+              this.tooltip.style.top = at[1].toString();
+              this.tooltip.innerHTML = text;
+          }
+      }
+      updateInfo(text) {
+          this.info.innerHTML =
+              text ||
+                  (this.terrain.victor
+                      ? `<H3 style="color:white; background:${this.terrain.victor.color}">${this.terrain.victor.name} side victorious</H3>`
+                      : "");
+      }
+      click(x, y) {
+          let cell = this.renderer.cellAtScreen(x, y);
+          this.clickCell(cell);
+          this.renderer.resetCanvasCache();
+      }
+      canPlayAs(unit) {
+          return unit.blue || this.mode != Game.PAI;
+      }
+      clickCell(cell) {
+          if (!cell)
+              return;
+          if (cell.unit) {
+              if (this.chosen &&
+                  this.chosen.team == cell.unit.team &&
+                  this.canPlayAs(cell.unit)) {
+                  this.chosen = cell.unit;
+                  this.chosen.calculate();
+                  return;
+              }
+              if (this.chosen && this.chosen.canDamage(cell.unit)) {
+                  this.chosen.shoot(cell);
+                  return;
+              }
+              if (this.chosen == cell.unit) {
+                  this.cancel();
+              }
+              else {
+                  if (this.canPlayAs(cell.unit))
+                      this.chosen = cell.unit;
+              }
+              if (this.chosen) {
+                  this.chosen.calculate();
+              }
+          }
+          if (!cell.unit && this.chosen && this.chosen.reachable(cell)) {
+              this.chosen.move(cell);
+              this.terrain.teams[Team.RED].calculate();
+          }
+          this.lastSelectedFaction = this.chosen ? this.chosen.team : this.terrain.we;
+      }
+      cancel() {
+          delete this.chosen;
+          this.renderer.resetCanvasCache();
+      }
+      hover(x, y) {
+          let cell = this.renderer.cellAtScreen(x, y);
+          if (this.hoveredCell == cell)
+              return;
+          if (!cell) {
+              delete this.hoveredCell;
+              this.renderer.resetCanvasCache();
+              return;
+          }
+          if (!cell)
+              return;
+          this.hoveredCell = cell;
+          let cursor = "default";
+          if ((this.chosen && this.chosen.reachable(cell)) || cell.unit)
+              cursor = "pointer";
+          if (this.chosen && this.chosen.canDamage(cell.unit)) {
+              cursor = "crosshair";
+              this.updateTooltip(this.renderer.cidToCenter(cell.cid), `${this.chosen.hitChance(cell.unit)}% ${this.chosen.gun
+                .averageDamage(this.chosen, cell.unit)
+                .toFixed(1)}`);
+          }
+          else {
+              this.updateTooltip();
+          }
+          document.body.style.cursor = cursor;
+          if (cell.unit) {
+              this.updateInfo(cell.unit.info());
+          }
+          else {
+              this.updateInfo();
+          }
+          if (!this.renderer.busy)
+              this.renderer.resetCanvasCache();
+      }
+      endTurn() {
+          return __awaiter(this, void 0, void 0, function* () {
+              delete this.chosen;
+              if (this.mode == Game.AIAI)
+                  yield this.terrain.teams[Team.BLUE].think();
+              if (this.mode != Game.PP)
+                  yield this.terrain.teams[Team.RED].think();
+              for (let c of this.terrain.units) {
+                  c.ap = 2;
+              }
+              this.renderer.resetCanvasCache();
+          });
+      }
+      toggleMode() {
+          this.mode = (this.mode + 1) % 3;
+          return ["[P+AI] 2P 2AI", "P+AI [2P] 2AI", "P+AI 2P [2AI]"][this.mode];
+      }
+      setMode(m) {
+          this.mode = m;
+      }
+      get hoveredChar() {
+          if (this.hoveredCell)
+              return this.hoveredCell.unit;
+      }
+  }
+  Game.PAI = 0;
+  Game.PP = 1;
+  Game.AIAI = 2;
+  /*
+
+        ##################################################
+        #      #  a      ++++# + #    ++#  s             #
+        # #    #  +         +#   #    ++#  ++++++++      #
+        #      +  +         +#   #    ++#  ++++++++      #
+        #S#    +  +         +# * #      #                #
+        #      #  +          #   #      #                #
+        # #    #             #   #     a#                #
+        #      #  +          ## ## ######                #
+        #             *                                  #
+        #                                                #
+        #A#    #          A  #s         #a               #
+        #      #  +          #          #                #
+        #A#    #  #      #a  #  ###    ++                #
+        #      #  #      #   #  #      ++       *        #
+        #G#    #  ########   #  #      +#                #
+        #      #             #          #                #
+        # #    ######  ###########  #####                #
+        #      #++++      ++ # +        #                #
+        #S#    #+            # +   ++   +                #
+        #      #            +#          #                #
+        #         ######g    #       +  #                #
+        #         ######g    #####  #####                #
+        #                    #   g      #      #        +#
+        #      #          +  #                         ++#
+        #G#    #+    *       #+++    +++#   #     #    ++#
+        #      #++      +    #          #g               #
+        # #    ######++###########++##########    ########
+        #                 S+                             #
+        #         +              A+                      #
+        ##################################################
+
+  */
+
+  let mouseAt;
+  let c;
+  let game;
+  let paused = false;
+  let pageButtons;
+  let modeButtons;
+  let pages;
+  let page = 0;
+  let mode = 0;
+  let editArea;
+  let endButton;
+  function gameUpdated(g) {
+      game = g;
+      if (!game) {
+          c.getContext("2d").clearRect(0, 0, 1200, 1200);
+      }
+  }
+  function updateUI() {
+      gameUpdated(game);
+  }
+  function updateButtons() {
+      for (let i = 0; i < 3; i++) {
+          if (i == mode) {
+              modeButtons[i].classList.add("pressed");
+          }
+          else {
+              modeButtons[i].classList.remove("pressed");
+          }
+      }
+      for (let i = 0; i < 3; i++) {
+          if (i == page) {
+              pageButtons[i].classList.add("pressed");
+              pages[i].style.display = "block";
+          }
+          else {
+              pageButtons[i].classList.remove("pressed");
+              pages[i].style.display = "none";
+          }
+      }
+      endButton.innerHTML = page == 0 ? "End Turn" : "Apply";
+      endButton.style.visibility = page == 1 ? "hidden" : "visible";
+  }
+  window.onload = function () {
+      c = document.getElementById("main");
+      endButton = document.getElementById("endb");
+      pages = ["main", "help", "editor"].map(id => document.getElementById(id));
+      pageButtons = ["playb", "helpb", "editb"].map(id => document.getElementById(id));
+      for (let i = 0; i < 3; i++) {
+          pageButtons[i].onclick = e => {
+              page = i;
+              updateButtons();
+          };
+      }
+      modeButtons = ["pai", "pp", "aiai"].map(id => document.getElementById(id));
+      for (let i = 0; i < 3; i++) {
+          modeButtons[i].onclick = e => {
+              mode = i;
+              game.setMode(mode);
+              updateButtons();
+          };
+      }
+      updateButtons();
+      gameUpdated(new Game(c, updateUI));
+      endButton.onclick = e => {
+          if (page == 0) {
+              game.endTurn();
+          }
+          if (page == 2) {
+              game.terrain.init(editArea.value);
+              page = 0;
+              updateButtons();
+          }
+      };
+      editArea = document.getElementById("edit-area");
+      /*let modeButton = document.getElementById("mode");
+      modeButton.onclick = e => {
+        modeButton.innerHTML = game.terrain.toggleMode();
+      };*/
+      c.addEventListener("mousedown", e => {
+          if (e.button == 2) {
+              console.log(game.terrain);
+              game.cancel();
+          }
+          else {
+              game.click(e.offsetX, e.offsetY);
+          }
+      });
+      c.addEventListener("mousemove", e => {
+          game.hover(e.offsetX, e.offsetY);
+      });
+      c.addEventListener("mouseleave", e => {
+          game.hover(undefined, undefined);
+      });
+      c.addEventListener("mouseenter", e => {
+      });
+      c.addEventListener("contextmenu", function (e) {
+          e.preventDefault();
+      }, false);
+      document.addEventListener("keyup", e => { });
+      document.addEventListener("keydown", e => { });
+      eachFrame(time => {
+          if (game && !paused && !game.over())
+              game.update(time);
+          if (page == 0)
+              endButton.style.visibility = game.renderer.busy ? "hidden" : "visible";
+      });
+      gameUpdated(game);
+      console.log(game.terrain.terrainString);
+      editArea.value = game.terrain.terrainString;
+  };
+
+  exports.mouseAt = mouseAt;
+
+  return exports;
+
+}({}));

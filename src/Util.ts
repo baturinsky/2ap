@@ -14,7 +14,16 @@ export function min<T>(list: T[], fn: (T) => number) {
     return { ind: minI, item: list[minI], val: minV };
 }
 
+export function max<T>(list: T[], fn: (T) => number) {
+  let r = min(list, t => -fn(t))
+  if(!r)
+    return;
+  r.val = -r.val;
+  return r;
+}
+
 export function createCanvas(w:number, h:number){
+  //const canvas = new OffscreenCanvas(w,h);
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -24,8 +33,7 @@ export function createCanvas(w:number, h:number){
 export function canvasCache(
   size: [number, number],
   draw: (ctx: CanvasRenderingContext2D) => void
-):HTMLCanvasElement {
-  //const canvas = new OffscreenCanvas(...size);
+):HTMLCanvasElement {  
   const canvas = createCanvas(...size)
   const ctx = canvas.getContext("2d");
   ctx.lineWidth = 1;

@@ -1,26 +1,33 @@
 import * as v2 from "./v2";
-import { random, idiv } from "./Util";
 import Terrain from "./Terrain";
-import FX from "./FX";
-import MovingText from "./MovingText";
 import { tileSize } from "./settings";
 import { V2 } from "./v2";
+import Unit from "./Unit";
+import RenderSchematic from "./RenderSchematic";
+import Team from "./Team";
+import Cell from "./Cell";
 
 export default class Game {
   ctx: CanvasRenderingContext2D;
-  width: number;
-  height: number;
   lastLoopTimeStamp: number;
   time: number = 0;
   terrain: Terrain;
   tooltip: HTMLElement;
   info: HTMLElement;
-  fx: FX[] = [];
-  busy: boolean = false;
+  //busy: boolean = false;
 
-  rni = random(1);
+  //eye: Char;
+  lastSelectedFaction: Team;
+  chosen: Unit;
+  hoveredCell: Cell;
 
-  rnf = () => (this.rni() % 1e9) / 1e9;
+  static readonly PAI = 0;
+  static readonly PP = 1;
+  static readonly AIAI = 2;
+
+  mode = Game.PAI;
+
+  renderer: RenderSchematic;
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -31,6 +38,7 @@ export default class Game {
     this.ctx.imageSmoothingEnabled = false;
     this.tooltip = document.getElementById("tooltip");
     this.info = document.getElementById("info");
+
     if (!terrainString)
       terrainString = `
       ##################################################
@@ -43,7 +51,7 @@ export default class Game {
       #      #  +          ## ## ######                #
       #             *                                  #
       #                                                #
-      #A#    #             #s         #a               #
+      #A#    #          A  #s         #a               #
       #      #  +          #          #                #
       #A#    #  #      #a  #  ###    ++                #
       #      #  #      #   #  #      ++       *        #
@@ -65,12 +73,12 @@ export default class Game {
       ##################################################
       `;
 
-    this.terrain = new Terrain(this, terrainString);
+    this.terrain = new Terrain(terrainString, (o: any) =>
+      this.renderer.draw(o)
+    );
 
-    this.width = this.canvas.clientWidth;
-    this.height = this.canvas.clientHeight;
-    this.canvas.height = this.height;
-    this.canvas.width = this.width;
+    //this.eye = new Char(this, Char.EYE, Char.BLUE, 0);
+    this.renderer = new RenderSchematic(this, this.canvas);
   }
 
   over() {
@@ -83,36 +91,11 @@ export default class Game {
     this.lastLoopTimeStamp = timeStamp;
     this.time += dTime;
 
-    this.terrain.update(dTime);
+    this.renderer.update(dTime);
 
-    this.fx = this.fx.filter(sfx => sfx.update(dTime));
-
-    this.render();
+    this.renderer.render(this.ctx);
 
     if (this.over()) this.updateUI();
-  }
-
-  render() {
-    let ctx = this.ctx;
-    ctx.clearRect(0, 0, this.width, this.height);
-
-    this.terrain.render(ctx);
-
-    for (let fx of this.fx) fx.render(ctx);
-  }
-
-  text(from: V2, text: string) {
-    let at = v2.sum(from, [0, -10]);
-    console.log(at);
-    new MovingText(this, text, "#f00", 3, at, [0, -10]);
-  }
-
-  blockingAnimationEnd: Function;
-
-  waitForAnim() {
-    return new Promise<void>(resolve => {
-      this.blockingAnimationEnd = () => resolve();
-    });
   }
 
   updateTooltip(at?: V2, text?: string) {
@@ -129,45 +112,140 @@ export default class Game {
   }
 
   updateInfo(text?: string) {
-    this.info.innerHTML = text || (this.terrain.victor>=0?`<H3 style="background:${["RED","BLUE"][this.terrain.victor]}">${["RED","BLUE"][this.terrain.victor]} side victorious</H3>`:"");
+    this.info.innerHTML =
+      text ||
+      (this.terrain.victor
+        ? `<H3 style="color:white; background:${this.terrain.victor.color}">${
+            this.terrain.victor.name
+          } side victorious</H3>`
+        : "");
+  }
+
+  click(x: number, y: number) {
+    let cell = this.renderer.cellAtScreen(x, y);
+    this.clickCell(cell);
+    this.renderer.resetCanvasCache();
+  }
+
+  canPlayAs(unit: Unit) {
+    return unit.blue || this.mode != Game.PAI;
+  }
+
+  clickCell(cell:Cell) {
+
+    if (!cell) return;
+
+    if (cell.unit) {
+      if (
+        this.chosen &&
+        this.chosen.team == cell.unit.team &&
+        this.canPlayAs(cell.unit)
+      ) {
+        this.chosen = cell.unit;
+        this.chosen.calculate();
+        return;
+      }
+
+      if (this.chosen && this.chosen.canDamage(cell.unit)) {
+        this.chosen.shoot(cell);
+        return;
+      }
+
+      if (this.chosen == cell.unit) {
+        this.cancel();
+      } else {
+        if (this.canPlayAs(cell.unit)) this.chosen = cell.unit;
+      }
+
+      if (this.chosen) {
+        this.chosen.calculate();
+      }
+    }
+
+    if (!cell.unit && this.chosen && this.chosen.reachable(cell)) {
+      this.chosen.move(cell);
+      this.terrain.teams[Team.RED].calculate();
+    }
+
+    this.lastSelectedFaction = this.chosen ? this.chosen.team : this.terrain.we;
+  }
+
+  cancel() {
+    delete this.chosen;
+    this.renderer.resetCanvasCache();
+  }
+
+  hover(x: number, y: number) {      
+    let cell = this.renderer.cellAtScreen(x, y);
+
+    if (this.hoveredCell == cell) return;
+
+    if (!cell) {
+      delete this.hoveredCell;
+      this.renderer.resetCanvasCache();
+      return;
+    }
+
+    if (!cell) return;    
+
+    this.hoveredCell = cell;
+
+
+    let cursor = "default";
+    if ((this.chosen && this.chosen.reachable(cell)) || cell.unit)
+      cursor = "pointer";
+
+    if (this.chosen && this.chosen.canDamage(cell.unit)) {
+      cursor = "crosshair";
+      this.updateTooltip(
+        this.renderer.cidToCenter(cell.cid),
+        `${this.chosen.hitChance(cell.unit)}% ${this.chosen.gun
+          .averageDamage(this.chosen, cell.unit)
+          .toFixed(1)}`
+      );
+    } else {
+      this.updateTooltip();
+    }
+    document.body.style.cursor = cursor;
+
+    if (cell.unit) {
+      this.updateInfo(cell.unit.info());
+    } else {
+      this.updateInfo();
+    }
+
+    if(!this.renderer.busy)
+      this.renderer.resetCanvasCache();
+  }
+
+  async endTurn() {
+    delete this.chosen;
+
+    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].think();
+    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].think();
+    for (let c of this.terrain.units) {
+      c.ap = 2;
+    }
+    this.renderer.resetCanvasCache();
+  }
+
+  toggleMode() {
+    this.mode = (this.mode + 1) % 3;
+    return ["[P+AI] 2P 2AI", "P+AI [2P] 2AI", "P+AI 2P [2AI]"][this.mode];
+  }
+
+  setMode(m: number) {
+    this.mode = m;
+  }
+
+  get hoveredChar(){
+    if(this.hoveredCell)
+      return this.hoveredCell.unit;
   }
 }
 
 /*
-    ##################################################
-    #                                                #
-    #+++++++G                                        #
-    #                                                #
-    #                                                #
-    # s    ###        +                              #
-    # ++              +    g                         #
-    #  + a++++        ++++++                         #
-    #  +                                             #
-    #                      A         S               #
-    #                               #                #
-    #                                                #
-    #   ####                                         #
-    #                                                #
-    #                  a#                            #
-    #                   #                            #
-    #             ++++++#                            #
-    #                   #                            #
-    #           #########                            #
-    #           +                                    #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    #                                                #
-    ##################################################
-*/
 
-/*
-`
       ##################################################
       #      #  a      ++++# + #    ++#  s             #
       # #    #  +         +#   #    ++#  ++++++++      #
@@ -178,7 +256,7 @@ export default class Game {
       #      #  +          ## ## ######                #
       #             *                                  #
       #                                                #
-      #A#    #             #s         #a               #
+      #A#    #          A  #s         #a               #
       #      #  +          #          #                #
       #A#    #  #      #a  #  ###    ++                #
       #      #  #      #   #  #      ++       *        #
@@ -198,5 +276,5 @@ export default class Game {
       #                 S+                             #
       #         +              A+                      #
       ##################################################
-      `
+
 */

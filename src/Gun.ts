@@ -1,4 +1,5 @@
-import Char from "./Char";
+import Unit from "./Unit";
+import Cell from "./Cell";
 
 export default class Gun {
   damageOptimalRange = [1, 20];
@@ -65,14 +66,16 @@ export default class Gun {
     return Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff);
   }
 
-  averageDamage(by: Char, target: Char) {
+  averageDamage(by: Unit, target: Unit, cell?:Cell) {
+    if(!cell)
+      cell = target.cell;
     let dmg = (this.damage[1] + this.damage[0]) * 0.5;
     dmg -= Math.max(0, target.armor - this.breach);
-    dmg -= this.damagePenalty(by.dist(target));    
+    dmg -= this.damagePenalty(by.dist(cell));    
     return Math.max(0, Math.round(dmg * 10) / 10);
   }
 
-  damageRoll(by: Char, target: Char, rnf: () => number) {
+  damageRoll(by: Unit, target: Unit, rnf: () => number) {
     let dmg = rnf() * (this.damage[1] - this.damage[0]) + this.damage[0];
     dmg -= Math.max(0, target.armor - this.breach);
     dmg -= this.damagePenalty(by.dist(target));

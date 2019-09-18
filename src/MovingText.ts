@@ -2,19 +2,18 @@ import Game from "./Game";
 
 import { V2 } from "./v2";
 import * as v2 from "./v2";
-import FX from "./FX";
+import { Context2d } from "./Util";
+import Anim from "./Anim";
 
-export default class MovingText extends FX {
+export default class MovingText implements Anim{
   time = 0;
   constructor(
-    game: Game,
     public text: string,
     public color: string,
     public lifeTime: number,
     public at: V2,
     public vel: V2 = [0, 0]
-  ) {
-    super(game)
+  ) {    
   }
 
   update(dTime: number) {
@@ -23,7 +22,7 @@ export default class MovingText extends FX {
     return this.time < this.lifeTime;
   }
 
-  render(ctx:CanvasRenderingContext2D) {
+  render(ctx:Context2d) {
     ctx.save();
     ctx.fillStyle = this.color;
     ctx.shadowColor = `black`;
