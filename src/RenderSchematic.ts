@@ -226,6 +226,15 @@ export default class RenderSchematic {
     }
 
     if (sprite) ctx.drawImage(sprite, at[0], at[1]);
+
+    if (cell.goody) {
+      ctx.translate(...at);
+      ctx.fillStyle = "#080";
+      ctx.fillRect(tileSize * 0.35, 0, tileSize * 0.3, tileSize);
+      ctx.fillRect(0, tileSize * 0.35, tileSize, tileSize * 0.3);
+      ctx.translate(...v2.scale(at, -1));
+    }
+
   }
 
   renderCellUI(ctx: Context2d, cell: Cell) {
@@ -274,13 +283,6 @@ export default class RenderSchematic {
       ctx.stroke();
     }
 
-    if (cell.goody) {
-      ctx.translate(...at);
-      ctx.fillStyle = "#080";
-      ctx.fillRect(tileSize * 0.35, 0, tileSize * 0.3, tileSize);
-      ctx.fillRect(0, tileSize * 0.35, tileSize, tileSize * 0.3);
-      ctx.translate(...v2.scale(at, -1));
-    }
   }
 
   renderDoll(ctx: Context2d, doll: Doll) {

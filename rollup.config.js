@@ -7,7 +7,7 @@ const production = !process.env.ROLLUP_WATCH;
 
 export default [
   {
-    input: "src/index.ts",
+    input: "src/index.tsx",
     output: {
       sourcemap: false,
       format: "iife",
@@ -16,7 +16,7 @@ export default [
     },
     plugins: [
 
-      resolve({ browser: true, preferBuiltins: false }),
+      resolve({ mainFields: ['module', 'browser', 'main'], preferBuiltins: false }),
       typescript({
         cacheRoot: `${require("temp-dir")}/.rpt2_cache`,
         tsconfig: "ts-rollup-config.json"

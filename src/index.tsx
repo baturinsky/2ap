@@ -1,7 +1,8 @@
 export let mouseAt: [number, number];
 import { eachFrame } from "./Util";
 import Game from "./Game";
-import Terrain from "./Terrain";
+import { h, render, Component } from "preact";
+
 let c: HTMLCanvasElement;
 
 let game: Game;
@@ -12,7 +13,7 @@ let pages: HTMLElement[];
 let page = 0;
 let mode = 0;
 let editArea: HTMLTextAreaElement;
-let endButton: HTMLElement
+let endButton: HTMLElement;
 
 function gameUpdated(g: Game) {
   game = g;
@@ -44,17 +45,44 @@ function updateButtons() {
     }
   }
 
-  endButton.innerHTML = page==0?"End Turn":"Apply"
-  endButton.style.visibility = page == 1?"hidden":"visible";
+  endButton.innerHTML = page == 0 ? "End Turn" : "Apply";
+  endButton.style.visibility = page == 1 ? "hidden" : "visible";
+}
+
+function Buttons(props) {
+  return (
+    <div class="bottom row">
+
+      {
+        [["pai", "vs AI"], ["pp", "2P"], ["aiai", "2AI"]].map(([id, text]) => <button class="small" id={id}>{text}</button>)
+      }
+      
+      &nbsp;
+
+      {
+        [["playb", "Play"], ["helpb", "Help"], ["editb", "Edit"]].map(([id, text]) => <button class="small" id={id}>{text}</button>)
+      }
+
+      <div id="info"></div>
+      <button id="endb">End Turn</button>
+    </div>
+  );
 }
 
 window.onload = function() {
   c = document.getElementById("main") as HTMLCanvasElement;
-  endButton = document.getElementById("endb")
+
+  let buttons = document.getElementById("buttons");
+  render(<Buttons />, buttons);
+
+ 
+  endButton = document.getElementById("endb");
 
   pages = ["main", "help", "editor"].map(id => document.getElementById(id));
 
-  pageButtons = ["playb", "helpb", "editb"].map(id => document.getElementById(id));
+  pageButtons = ["playb", "helpb", "editb"].map(id =>
+    document.getElementById(id)
+  );
 
   for (let i = 0; i < 3; i++) {
     pageButtons[i].onclick = e => {
@@ -78,10 +106,10 @@ window.onload = function() {
   gameUpdated(new Game(c, updateUI));
 
   endButton.onclick = e => {
-    if(page == 0){
+    if (page == 0) {
       game.endTurn();
     }
-    if(page == 2){
+    if (page == 2) {
       game.init(editArea.value);
       page = 0;
       updateButtons();
@@ -89,11 +117,6 @@ window.onload = function() {
   };
 
   editArea = document.getElementById("edit-area") as HTMLTextAreaElement;
-
-  /*let modeButton = document.getElementById("mode");
-  modeButton.onclick = e => {
-    modeButton.innerHTML = game.terrain.toggleMode();
-  };*/
 
   c.addEventListener("mousedown", e => {
     if (e.button == 2) {
@@ -109,11 +132,10 @@ window.onload = function() {
   });
 
   c.addEventListener("mouseleave", e => {
-    game.hover(undefined, undefined)
+    game.hover(undefined, undefined);
   });
 
-  c.addEventListener("mouseenter", e => {
-  });
+  c.addEventListener("mouseenter", e => {});
 
   c.addEventListener(
     "contextmenu",
@@ -129,8 +151,8 @@ window.onload = function() {
 
   eachFrame(time => {
     if (game && !paused && !game.over()) game.update(time);
-    if(page == 0)
-      endButton.style.visibility = game.renderer.busy?"hidden":"visible";
+    if (page == 0)
+      endButton.style.visibility = game.renderer.busy ? "hidden" : "visible";
   });
 
   gameUpdated(game);

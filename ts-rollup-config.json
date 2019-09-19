@@ -4,6 +4,8 @@
     "allowSyntheticDefaultImports": true,
     "module": "esNext",
     "target": "es6",
+    "jsx": "react",
+    "jsxFactory": "h",
     "allowJs": true,
     "experimentalDecorators": true,
     "moduleResolution": "node",

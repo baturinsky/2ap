@@ -25,7 +25,7 @@ export default class Cell {
   calculatePovAnCover() {
     if (this.obstacle) return;
     this.cover = this.terrain.obstacles(this.cid);
-    this.peekSides();
+    this.calculatePovs();
   }
 
   calculateFov() {
@@ -99,7 +99,7 @@ export default class Cell {
   }
 
 
-  peekSides() {
+  calculatePovs() {
     this.povs = [];
     let t = this.terrain;
     let cid = this.cid;
@@ -117,7 +117,7 @@ export default class Cell {
       ];
       for (let side of [left, right]) {
         let peekable =
-          t.cells[side[0]].obstacle == 0 && t.cells[side[1]].obstacle <= 1;
+          t.cells[side[0]].standable && t.cells[side[1]].obstacle <= 1;
         if (peekable) {
           this.povs.push(t.cells[side[0]]);
         }
