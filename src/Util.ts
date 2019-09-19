@@ -24,8 +24,8 @@ export function max<T>(list: T[], fn: (T) => number) {
 }
 
 export function createCanvas(w:number, h:number){
-  if(OffscreenCanvas)
-    return new OffscreenCanvas(w,h);
+  /*if(OffscreenCanvas)
+    return new OffscreenCanvas(w,h);*/
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
