@@ -1,5 +1,5 @@
 import Terrain from "./Terrain";
-import { Context2d, idiv, createCanvas, canvasCache } from "./Util";
+import { Context2d, idiv, createCanvas, canvasCache, Canvas2d } from "./Util";
 import { tileSize } from "./settings";
 import Unit from "./Unit";
 import Cell from "./Cell";
@@ -10,7 +10,6 @@ import * as v2 from "./v2";
 import { V2 } from "./v2";
 import Game from "./Game";
 import Team from "./Team";
-import { verify } from "crypto";
 
 const renderPovs = true;
 const renderThreats = false;
@@ -25,7 +24,8 @@ class Doll {
 
 export default class RenderSchematic {
   canvasCacheOutdated = false;
-  canvasCache: HTMLCanvasElement;
+  canvasCache: Canvas2d;
+  canvasTerrain: Canvas2d;
 
   width: number;
   height: number;
@@ -60,6 +60,12 @@ export default class RenderSchematic {
     }
   );
 
+  static readonly wavePattern = canvasCache([12, 12], ctx => {
+    ctx.beginPath();
+    ctx.arc(6.5, 4, 7, 7, Math.PI);
+    ctx.stroke();
+  });
+
   static readonly crossPattern = canvasCache([3, 3], ctx => {
     for (let i = 0; i < dashInterval; i++) {
       ctx.fillRect(dashInterval - i - 1, i, 1, 1);
@@ -79,10 +85,14 @@ export default class RenderSchematic {
     ctx.fillRect(0, 0, tileSize, tileSize);
   });
 
-  static readonly emptyTile = canvasCache([1, 1], ctx => {});
+  static readonly waterTile = canvasCache([tileSize, tileSize], ctx => {
+    ctx.fillStyle = ctx.createPattern(RenderSchematic.wavePattern, "repeat");
+    ctx.fillRect(0, 0, tileSize, tileSize);
+  });
 
   synch() {
     this.dolls = this.terrain.units.map(unit => new Doll(unit, this));
+    this.updateCanvasCache();
   }
 
   get terrain() {
@@ -92,11 +102,6 @@ export default class RenderSchematic {
   constructor(public game: Game, public canvas: HTMLCanvasElement) {
     this.width = this.canvas.clientWidth;
     this.height = this.canvas.clientHeight;
-    this.canvas.height = this.height;
-    this.canvas.width = this.width;
-
-    this.synch();
-    this.updateCanvasCache();
   }
 
   update(dTime: number) {
@@ -128,7 +133,14 @@ export default class RenderSchematic {
     if (!this.canvasCache || this.canvasCacheOutdated) this.updateCanvasCache();
     ctx.clearRect(0, 0, t.w * tileSize, t.h * tileSize);
 
+    ctx.save();
+    /*ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.shadowColor = "#444";*/
+
     ctx.drawImage(this.canvasCache, 0, 0);
+    ctx.restore();
 
     for (let d of this.dolls) {
       this.renderDoll(ctx, d);
@@ -139,8 +151,7 @@ export default class RenderSchematic {
     if (this.animQueue.length > 0 && this.animQueue[0].render)
       this.animQueue[0].render(ctx);
 
-    if(!this.busy)
-      this.renderPath(ctx, this.game.hoveredCell);
+    if (!this.busy) this.renderPath(ctx, this.game.hoveredCell);
 
     return this.animQueue.length > 0;
   }
@@ -204,16 +215,22 @@ export default class RenderSchematic {
   }
 
   renderCell(ctx: Context2d, cell: Cell) {
-    let g = this.game;
     let at = this.cidToScreen(cell.cid);
 
     let sprite = [, RenderSchematic.lowTile, RenderSchematic.highTile][
       cell.obstacle
     ];
 
-    ctx.save();
+    if (cell.hole) {
+      sprite = RenderSchematic.waterTile;
+    }
 
-    ctx.shadowColor = `rgba(0,0,0,0)`;
+    if (sprite) ctx.drawImage(sprite, at[0], at[1]);
+  }
+
+  renderCellUI(ctx: Context2d, cell: Cell) {
+    let at = this.cidToScreen(cell.cid);
+    let g = this.game;
 
     if (renderThreats) this.renderThreats(ctx, cell);
 
@@ -221,10 +238,10 @@ export default class RenderSchematic {
     ctx.lineWidth = 2;
 
     if (g.hoveredCell) {
-      let xfov = g.hoveredCell.xfov.has(cell.cid)
-      let dfov = g.hoveredCell.dfov.has(cell.cid)
-      if(!dfov){
-        ctx.fillStyle = `rgba(${xfov?"50,50,0,0.04":"0,0,50,0.1"})`;
+      let xfov = g.hoveredCell.xfov.has(cell.cid);
+      let dfov = g.hoveredCell.rfov.has(cell.cid);
+      if (!dfov) {
+        ctx.fillStyle = `rgba(${xfov ? "50,50,0,0.04" : "0,0,50,0.1"})`;
         ctx.fillRect(at[0], at[1], tileSize, tileSize);
       }
     }
@@ -247,21 +264,23 @@ export default class RenderSchematic {
       ctx.strokeStyle = `rgba(0,0,0,0.5)`;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.arc(at[0] + tileSize / 2, at[1] + tileSize / 2, tileSize / 4, 0, Math.PI * 2);
+      ctx.arc(
+        at[0] + tileSize / 2,
+        at[1] + tileSize / 2,
+        tileSize / 4,
+        0,
+        Math.PI * 2
+      );
       ctx.stroke();
     }
 
-    ctx.restore();
-
     if (cell.goody) {
-      ctx.translate(...at)
+      ctx.translate(...at);
       ctx.fillStyle = "#080";
       ctx.fillRect(tileSize * 0.35, 0, tileSize * 0.3, tileSize);
       ctx.fillRect(0, tileSize * 0.35, tileSize, tileSize * 0.3);
-      ctx.translate(...v2.scale(at, -1))
+      ctx.translate(...v2.scale(at, -1));
     }
-
-    if (sprite) ctx.drawImage(sprite, at[0], at[1]);
   }
 
   renderDoll(ctx: Context2d, doll: Doll) {
@@ -281,7 +300,6 @@ export default class RenderSchematic {
 
   outline(ctx: Context2d, doll: Doll, width = 2) {
     ctx.save();
-    ctx.shadowColor = `rgba(0,0,0,0)`;
     //console.assert(tile.unit.blue)
     ctx.strokeStyle = doll.unit.strokeColor;
     ctx.lineWidth = width;
@@ -291,7 +309,7 @@ export default class RenderSchematic {
     ctx.restore();
   }
 
-  dollCache: { [key: string]: HTMLCanvasElement } = {};
+  dollCache: { [key: string]: Canvas2d } = {};
 
   useDollCache(ctx: Context2d, doll: Doll) {
     let unit = doll.unit;
@@ -306,8 +324,7 @@ export default class RenderSchematic {
   }
 
   dollTint(doll: Doll) {
-    if(this.busy || this.terrain.aiTurn)
-      return 0;
+    if (this.busy || this.terrain.aiTurn) return 0;
     let unit = doll.unit;
     let flankNum = 0;
     let hover = this.game.hoveredCell;
@@ -407,23 +424,35 @@ export default class RenderSchematic {
         this.terrain.h * tileSize
       );
 
+    if (!this.canvasTerrain)
+      this.canvasTerrain = createCanvas(
+        this.terrain.w * tileSize,
+        this.terrain.h * tileSize
+      );
+
+    let tctx = this.canvasTerrain.getContext("2d");
+    tctx.clearRect(0, 0, this.terrain.w * tileSize, this.terrain.h * tileSize);
+    for (let i = 0; i < this.terrain.cells.length; i++) {
+      let cell = this.terrain.cells[i];
+      this.renderCell(tctx, cell);
+    }
+
     let ctx = this.canvasCache.getContext("2d");
 
-    ctx.save();
     ctx.clearRect(0, 0, this.terrain.w * tileSize, this.terrain.h * tileSize);
 
+    ctx.save();
     ctx.shadowBlur = 4;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     ctx.shadowColor = "#444";
+    ctx.drawImage(this.canvasTerrain, 0, 0);
+    ctx.restore();
 
     for (let i = 0; i < this.terrain.cells.length; i++) {
       let cell = this.terrain.cells[i];
-      ctx.save();
-      this.renderCell(ctx, cell);
+      this.renderCellUI(ctx, cell);
     }
-
-    ctx.restore();
 
     this.canvasCacheOutdated = false;
   }
@@ -465,7 +494,7 @@ export default class RenderSchematic {
 
     completely: for (a of tiles[0].povs)
       for (b of tiles[1].povs) {
-        if (a.dfov.has(b.cid)) {
+        if (a.rfov.has(b.cid)) {
           points = [a, b].map(v => this.cidToCenter(v.cid)) as [V2, V2];
           break completely;
         }
@@ -483,10 +512,10 @@ export default class RenderSchematic {
       update: dTime => {
         if (time < 1 || time > 2) {
           let peek = (time < 1 ? time : 3 - time) * 0.6;
-          for(let i=0;i<2;i++){
-            let doll = [fdoll,tdoll][i]
+          for (let i = 0; i < 2; i++) {
+            let doll = [fdoll, tdoll][i];
             doll.at = v2.lerp(
-              this.cidToScreen([from,to][i]),
+              this.cidToScreen([from, to][i]),
               v2.sub(points[i], [tileSize / 2, tileSize / 2]),
               peek
             );
@@ -562,8 +591,7 @@ export default class RenderSchematic {
     });
   }
 
-  get busy(){
+  get busy() {
     return this.animQueue.length > 0;
   }
-
 }

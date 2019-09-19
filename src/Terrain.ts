@@ -25,7 +25,7 @@ export default class Terrain {
   cells: Cell[];
   w: number;
   h: number;
-  aiTurn:boolean = false;
+  aiTurn: boolean = false;
 
   dir8Deltas: number[];
 
@@ -62,14 +62,15 @@ export default class Terrain {
       let line = lines[y];
       for (let x = 0; x < this.w; x++) {
         let cid = x + y * this.w;
-        let unit = line[x] || " ";
+        let symbol = line[x] || " ";
         let cell = new Cell(
           this,
           cid,
-          ["+", "#"].indexOf(unit) + 1,
-          Unit.from(this, unit, this.cid(x, y))
+          ["+", "#"].indexOf(symbol) + 1,
+          Unit.from(this, symbol, this.cid(x, y))
         );
-        if (unit == "*") cell.goody = 1;
+        if (symbol == "*") cell.goody = 1;
+        if (symbol == "~") cell.hole = true;
         this.cells[cid] = cell;
       }
     }
@@ -98,7 +99,10 @@ export default class Terrain {
     }
 
     for (let c of this.cells) {
-      if (!c.obstacle) c.calculateXFov();
+      if (!c.obstacle) {
+        c.calculateXFov();
+        c.calculateDFov();
+      } 
     }
   }
 
@@ -106,40 +110,55 @@ export default class Terrain {
     this.cells[this.cid(x, y)].seal();
   }
 
-  constructor(public terrainString: string, public animate: (any) => Promise<void>) {
+  constructor(
+    public terrainString: string,
+    public animate: (any) => Promise<void>
+  ) {
     this.init(terrainString);
   }
 
-  calcDists(x: number, y?: number) {
-    let fromi = isNaN(+y) ? x : this.cid(x, y);
+  calcDists(fromi:number) {    
+
     let dists = this.cells.map(_ => [Number.MAX_VALUE, -1]);
     dists[fromi] = [0, -1];
     let todo: number[] = [fromi];
 
+    let char = this.cells[fromi].unit;
+
     while (todo.length > 0) {
       let curi = todo.shift();
       let curl = dists[curi][0];
+      let curc = this.cells[curi];
+
       for (let dir = 0; dir < 8; dir++) {
         let diagonal = dir % 2;
         let nexti = this.dir8Deltas[dir] + curi;
+        let nextc = this.cells[nexti];
 
-        let blocked = !!(this.cells[nexti].obstacle || this.cells[nexti].unit);
+        if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(char))) continue;
+
         if (
           diagonal &&
           (this.cells[curi + this.dir8Deltas[(dir + 1) % 8]].obstacle ||
             this.cells[curi + this.dir8Deltas[(dir + 7) % 8]].obstacle)
         )
-          blocked = true;
+          continue;
 
-        if (!blocked) {
-          let next = dists[nexti];
-          let plusl = diagonal ? 1.414 : 1;
-          if (next[0] > curl + plusl) {
-            dists[nexti] = [curl + plusl, curi];
-            todo.push(nexti);
-          }
+        let obstacleness = nextc.obstacle + curc.obstacle + (curc.unit?1:0) + (nextc.unit?1:0);
+        if (obstacleness > 1 && (diagonal && obstacleness > 0)) continue;
+
+        let next = dists[nexti];
+        let plusl = obstacleness + (diagonal ? 1.414 : 1);
+        if (next[0] > curl + plusl) {
+          dists[nexti] = [curl + plusl, curi];
+          todo.push(nexti);
         }
       }
+    }
+
+    for(let i=0; i<dists.length; i++){
+      if(!this.cells[i].standable)
+        dists[i][0] = Number.MAX_VALUE;
     }
     return dists;
   }
@@ -184,7 +203,6 @@ export default class Terrain {
     );
     return visibility;
   }
-
 
   obstacles(cid: number) {
     let obstacles: number[] = [];

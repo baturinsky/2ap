@@ -82,7 +82,7 @@ window.onload = function() {
       game.endTurn();
     }
     if(page == 2){
-      game.terrain.init(editArea.value);
+      game.init(editArea.value);
       page = 0;
       updateButtons();
     }

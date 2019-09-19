@@ -1,14 +1,10 @@
 Todo 
 
-Walk through light cover
-Optimise Blueprint graphics mode
 Main menu
-Water
-Support for custom units, custom weapons, multiple levels in editor
-Status effects
-Overwatch
-Hunker down
 Full Screen and scrolling
+Support for custom units, custom weapons, multiple stages in editor
+Status effects
+Hunker down
 Hidden Movement
 Targeted abilities (heal)
 AOE effects (explosion)
@@ -16,7 +12,11 @@ Tile effects (smoke)
 
 Done
 
+Water
 Disjoint UI from game model
+Optimise Blueprint graphics mode
+Walk through light cover
+Overwatch
 
 -
 

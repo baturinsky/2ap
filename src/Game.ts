@@ -29,6 +29,48 @@ export default class Game {
 
   renderer: RenderSchematic;
 
+  init(terrainString?: string) {
+    if (!terrainString)
+      terrainString = `
+      ##################################################
+      ################# g+         ###++    ##      ++##
+      ################# ++         +                 +##
+      ####################               a+          +##
+      #################                   +    +      ##
+      #################* #          ++++      ##      ##
+      ####################                     +      ##
+      #################        +# + #+a##     g#   ++g##
+      ##################+##  ####################  +####
+      ###   +++  #*+  # g#   a###################      #
+      ###       a#   +# +#    ##########+#++++  #   # *#
+      #   +      ###  #  #    #        # a+++   #   ####
+      #  g+        #  #+ #       +  +  #              ##
+      #   +        ## ## #      g+  +     +           ##
+      #                  #  g #        #+  +++  #     ##
+      #    + ## ####  #     ++#  +  +  #a  +#+  #     ##
+      #    + g# +###  ####    #######  ##########     ##
+      #++  + ## ##a+  +  #   +##+a+     + #  +  ##+   ##
+      #       # +#       #++ +# + +   +g+ # ++ +#+    ##
+      #       # +#   +   #+         +++               ##
+      #   #++## +## #+# ##            +               ##
+      #   +         +         #         ++      #     ##
+      #                  #    # ####### ### ## ### +  ##
+      #   #  a+          #g   # a*##++a     #+  #  +  ##
+      #~~~~~~~~~ ~~~~~~####  ##################### +  ##
+      #~~~~~~~~# #~~~~~~##    a+#+ +                  ##
+      #~~~~~~~~ *              +     # ##          AGA##
+      ###~~~~~~# #~~~~~~~~           #  #          GGA##
+      ####~~~~~~~~~~~~~~~#           # *#          AAA##
+      ##################################################
+      `;
+
+    this.terrain = new Terrain(terrainString, (o: any) =>
+      this.renderer.draw(o)
+    );
+
+    this.renderer.synch();
+  }
+
   constructor(
     public canvas: HTMLCanvasElement,
     public updateUI: Function,
@@ -39,46 +81,12 @@ export default class Game {
     this.tooltip = document.getElementById("tooltip");
     this.info = document.getElementById("info");
 
-    if (!terrainString)
-      terrainString = `
-      ##################################################
-      #      #  a      ++++# + #    ++#  s             #
-      # #    #  +         +#   #    ++#  ++++++++      #
-      #      +  +         +#   #    ++#  ++++++++      #
-      #S#    +  +         +# * #      #                #
-      #      #  +          #   #      #                #
-      # #    #             #   #     a#                #
-      #      #  +          ## ## ######                #
-      #             *                                  #
-      #                                                #
-      #A#    #          A  #s         #a               #
-      #      #  +          #          #                #
-      #A#    #  #      #a  #  ###    ++                #
-      #      #  #      #   #  #      ++       *        #
-      #G#    #  ########   #  #      +#                #
-      #      #             #          #                #
-      # #    ######  ###########  #####                #
-      #      #++++      ++ # +        #                #
-      #S#    #+            # +   ++   +                #
-      #      #            +#          #                #
-      #         ######g    #       +  #                #
-      #         ######g    #####  #####                #
-      #                    #   g      #      #        +#
-      #      #          +  #                         ++#
-      #G#    #+    *       #+++    +++#   #     #    ++#
-      #      #++      +    #          #g               #
-      # #    ######++###########++##########    ########
-      #                 S+                             #
-      #         +              A+                      #
-      ##################################################
-      `;
+    this.canvas.height = this.canvas.clientHeight;
+    this.canvas.width = this.canvas.clientWidth;
 
-    this.terrain = new Terrain(terrainString, (o: any) =>
-      this.renderer.draw(o)
-    );
-
-    //this.eye = new Char(this, Char.EYE, Char.BLUE, 0);
     this.renderer = new RenderSchematic(this, this.canvas);
+
+    this.init(terrainString);
   }
 
   over() {
@@ -96,6 +104,10 @@ export default class Game {
     this.renderer.render(this.ctx);
 
     if (this.over()) this.updateUI();
+
+    if (this.chosen && !this.chosen.alive) {
+      delete this.chosen;
+    }
   }
 
   updateTooltip(at?: V2, text?: string) {
@@ -115,9 +127,7 @@ export default class Game {
     this.info.innerHTML =
       text ||
       (this.terrain.victor
-        ? `<H3 style="color:white; background:${this.terrain.victor.color}">${
-            this.terrain.victor.name
-          } side victorious</H3>`
+        ? `<H3 style="color:white; background:${this.terrain.victor.color}">${this.terrain.victor.name} side victorious</H3>`
         : "");
   }
 
@@ -131,8 +141,7 @@ export default class Game {
     return unit.blue || this.mode != Game.PAI;
   }
 
-  clickCell(cell:Cell) {
-
+  clickCell(cell: Cell) {
     if (!cell) return;
 
     if (cell.unit) {
@@ -175,7 +184,7 @@ export default class Game {
     this.renderer.resetCanvasCache();
   }
 
-  hover(x: number, y: number) {      
+  hover(x: number, y: number) {
     let cell = this.renderer.cellAtScreen(x, y);
 
     if (this.hoveredCell == cell) return;
@@ -186,10 +195,9 @@ export default class Game {
       return;
     }
 
-    if (!cell) return;    
+    if (!cell) return;
 
     this.hoveredCell = cell;
-
 
     let cursor = "default";
     if ((this.chosen && this.chosen.reachable(cell)) || cell.unit)
@@ -214,8 +222,7 @@ export default class Game {
       this.updateInfo();
     }
 
-    if(!this.renderer.busy)
-      this.renderer.resetCanvasCache();
+    if (!this.renderer.busy) this.renderer.resetCanvasCache();
   }
 
   async endTurn() {
@@ -238,9 +245,8 @@ export default class Game {
     this.mode = m;
   }
 
-  get hoveredChar(){
-    if(this.hoveredCell)
-      return this.hoveredCell.unit;
+  get hoveredChar() {
+    if (this.hoveredCell) return this.hoveredCell.unit;
   }
 }
 
@@ -252,17 +258,17 @@ export default class Game {
       #      +  +         +#   #    ++#  ++++++++      #
       #S#    +  +         +# * #      #                #
       #      #  +          #   #      #                #
-      # #    #             #   #     a#                #
-      #      #  +          ## ## ######                #
+      # #    #             #   #      #                #
+      #      #  +          ##a## ######                #
       #             *                                  #
       #                                                #
-      #A#    #          A  #s         #a               #
-      #      #  +          #          #                #
-      #A#    #  #      #a  #  ###    ++                #
-      #      #  #      #   #  #      ++       *        #
-      #G#    #  ########   #  #      +#                #
-      #      #             #          #                #
-      # #    ######  ###########  #####                #
+      #A#    #             #s         #a     ~~~       #
+      #      #  +          #          #    ~~~~~~      #
+      #A#    #  #      #a  #  ###    ++   ~~~ A ~~~    #
+      #      #  #      #   #  #      ++       * ~~~    #
+      #G#    #  ########   #  #      +#    ~    ~~     #
+      #      #             #          #    ~~~~~~~     #
+      # #    ######  ###########  #####      ~~~~      #
       #      #++++      ++ # +        #                #
       #S#    #+            # +   ++   +                #
       #      #            +#          #                #

@@ -1,4 +1,5 @@
 export type Context2d = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+export type Canvas2d = HTMLCanvasElement | OffscreenCanvas;
 
 export function min<T>(list: T[], fn: (T) => number) {
   let minV = Number.MAX_VALUE
@@ -23,7 +24,8 @@ export function max<T>(list: T[], fn: (T) => number) {
 }
 
 export function createCanvas(w:number, h:number){
-  //const canvas = new OffscreenCanvas(w,h);
+  if(OffscreenCanvas)
+    return new OffscreenCanvas(w,h);
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -32,8 +34,8 @@ export function createCanvas(w:number, h:number){
 
 export function canvasCache(
   size: [number, number],
-  draw: (ctx: CanvasRenderingContext2D) => void
-):HTMLCanvasElement {  
+  draw: (ctx: CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D) => void
+):HTMLCanvasElement|OffscreenCanvas {  
   const canvas = createCanvas(...size)
   const ctx = canvas.getContext("2d");
   ctx.lineWidth = 1;

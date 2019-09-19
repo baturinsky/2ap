@@ -110,6 +110,8 @@ export default class Unit {
     this.dists = this.terrain.calcDists(this.cid);
   }
 
+  
+
   calculate() {
     this.calculateDists();
   }
@@ -133,8 +135,9 @@ export default class Unit {
     return this.ap > 0;
   }
 
-  hitChance(target: Unit, cell?: Cell): number {
-    if (!this.cell.xfov.has((cell || target.cell).cid)) return 0;
+  hitChance(target: Unit, cell?: Cell, direct = false): number {
+    let fov = direct?this.cell.dfov:this.cell.xfov
+    if (!fov.has((cell || target.cell).cid)) return 0;
     let cover = this.cover(cell || target.cell);
     if (cover == -1) return 0;
     let accuracy = this.gun.accuracy;
@@ -210,8 +213,9 @@ export default class Unit {
     let owPoints = [] as { moment: number; enemy: Unit }[];
     for (let enemy of enemies) {
       if (enemy.ap == 0) continue;
-      let bestMoment = max(path, step => enemy.averageDamage(this, step));
-      if (bestMoment && bestMoment.val > 0) {
+      let bestMoment = max(path, step => !step.unit && enemy.averageDamage(this, step, true));
+      if (bestMoment && bestMoment.val >= 1) {
+        console.log(bestMoment.val);
         owPoints.push({ moment: bestMoment.ind, enemy });
       }
     }
@@ -223,8 +227,11 @@ export default class Unit {
       await this.animateWalk(this.pathTo(place));
       this.teleport(place);
       await owPoint.enemy.shoot(place);
+      if(!this.alive)
+        return true;
     }
 
+    
     await this.animateWalk(this.pathTo(to));
     this.teleport(to);
 
@@ -283,9 +290,9 @@ export default class Unit {
     return this.terrain.cells[bestAt];
   }
 
-  averageDamage(tchar: Unit, cell?: Cell) {
-    let hitChance = this.hitChance(tchar, cell);
-    return hitChance * this.gun.averageDamage(this, tchar, cell);
+  averageDamage(tchar: Unit, cell?: Cell, direct=false) {
+    let hitChance = this.hitChance(tchar, cell, direct);
+    return hitChance * this.gun.averageDamage(this, tchar, cell) / 100;
   }
 
   bestTarget() {
@@ -320,5 +327,9 @@ export default class Unit {
 
   get alive() {
     return this.hp > 0;
+  }
+
+  friendly(other:Unit){
+    return other && this.team == other.team;
   }
 }

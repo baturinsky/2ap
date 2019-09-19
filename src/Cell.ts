@@ -6,12 +6,14 @@ import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
 
 export default class Cell {
+  rfov = new Set<number>(); /* raw FOV, without XCOM tricks */
   xfov = new Set<number>(); /* FOV with respect of peek-out */
-  dfov = new Set<number>(); /* direct FOV */
+  dfov = new Set<number>(); /* Direct fov, withonly source stepping out. For ground attacks and overwatch */
   povs: Cell[] = [];
   peeked: Cell[] = [];
   cover: number[];
   goody: number;
+  hole: boolean;
 
   constructor(
     public terrain: Terrain,
@@ -43,20 +45,32 @@ export default class Cell {
       }
     );
 
-    this.dfov = visibility;
+    this.rfov = visibility;
   }
 
   calculateXFov() {
     let visibility = new Set<number>();
 
     for (let p of this.povs) {
-      for (let visible of p.dfov) {
+      for (let visible of p.rfov) {
         let visibleTile = this.terrain.cells[visible];
         for (let neighbor of visibleTile.peeked) visibility.add(neighbor.cid);
       }
     }
     this.xfov = visibility;
   }
+
+  calculateDFov() {
+    let visibility = new Set<number>();
+
+    for (let p of this.povs) {
+      for (let visible of p.rfov) {
+        visibility.add(visible);
+      }
+    }
+    this.dfov = visibility;
+  }
+
 
   get at() {
     return this.terrain.fromCid(this.cid);
@@ -75,6 +89,15 @@ export default class Cell {
   get opaque() {
     return this.obstacle == 2;
   }
+
+  get passable(){
+    return this.obstacle<2 && !this.hole;
+  }
+
+  get standable(){
+    return this.obstacle==0 && !this.hole && !this.unit;
+  }
+
 
   peekSides() {
     this.povs = [];
