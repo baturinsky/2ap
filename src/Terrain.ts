@@ -1,11 +1,12 @@
-import { idiv, Context2d, createCanvas, random } from "./Util";
+import { idiv, random } from "./Util";
 import Cell from "./Cell";
 import Unit from "./Unit";
-import Game from "./Game";
 import * as v2 from "./v2";
-import { tileSize } from "./settings";
 import shadowcast from "./sym-shadowcast";
 import Team from "./Team";
+import Gun from "./Gun";
+import { StageConf } from "./Campaigns";
+import { throws } from "assert";
 
 type V2 = [number, number];
 const sightRange = 20;
@@ -34,11 +35,28 @@ export default class Terrain {
 
   victor: Team;
 
+  terrainString: string;
+
+  stage: StageConf;
+
   rni = random(1);
+
+  activeTeam = 0;
 
   rnf = () => (this.rni() % 1e9) / 1e9;
 
+  serialize() {
+    return {
+      campaign: this.campaign.name,
+      stage: this.stage.name,
+      teams: this.teams.map(t => t.serialize()),
+      activeTeam: this.activeTeam
+    };
+  }
+
   init(terrainString: string) {
+    this.terrainString = terrainString;
+
     let lines = terrainString
       .split("\n")
       .map(s => s.trim())
@@ -67,7 +85,7 @@ export default class Terrain {
           this,
           cid,
           ["+", "#"].indexOf(symbol) + 1,
-          Unit.from(this, symbol, this.cid(x, y))
+          Unit.from(this, { symbol, cid: this.cid(x, y) })
         );
         if (symbol == "*") cell.goody = 1;
         if (symbol == "~") cell.hole = true;
@@ -102,23 +120,59 @@ export default class Terrain {
       if (!c.obstacle) {
         c.calculateXFov();
         c.calculateDFov();
-      } 
+      }
     }
+
+    console.log(this);
   }
 
   seal(x: number, y: number) {
     this.cells[this.cid(x, y)].seal();
   }
 
+
   constructor(
-    public terrainString: string,
+    public campaign: any,
+    save: any,
     public animate: (any) => Promise<void>
   ) {
-    this.init(terrainString);
+
+    let stageName: string;
+
+    if (save) {
+      stageName = save.stage;
+    }
+
+    stageName = stageName || campaign.startingStage;
+    this.stage =
+      campaign.stages.find(s => s.name == stageName) || campaign.stages[0];
+
+    for (let gunId in campaign.guns) {
+      campaign.guns[gunId] = new Gun(campaign.guns[gunId]);
+    }
+    this.init(this.stage.terrain);
+
+    if (save) this.loadState(save);
   }
 
-  calcDists(fromi:number) {    
+  loadState(save: any) {
+    if(!save.terrain || !save.terrain.teams)
+      return;
+      
+    this.units = [];
+    this.cells.forEach(c => delete c.unit);
 
+    this.teams = save.terrain.teams.map((t, i) => {
+      let team = new Team(this, i);
+      for (let u of t.units) {        
+        let unit = Unit.from(this, u);
+        unit.team = team;
+      }
+      return team;
+    });
+  }
+
+  calcDists(fromi: number) {
     let dists = this.cells.map(_ => [Number.MAX_VALUE, -1]);
     dists[fromi] = [0, -1];
     let todo: number[] = [fromi];
@@ -135,7 +189,8 @@ export default class Terrain {
         let nexti = this.dir8Deltas[dir] + curi;
         let nextc = this.cells[nexti];
 
-        if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(char))) continue;
+        if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(char)))
+          continue;
 
         if (
           diagonal &&
@@ -144,7 +199,11 @@ export default class Terrain {
         )
           continue;
 
-        let obstacleness = nextc.obstacle + curc.obstacle + (curc.unit?1:0) + (nextc.unit?1:0);
+        let obstacleness =
+          nextc.obstacle +
+          curc.obstacle +
+          (curc.unit ? 1 : 0) +
+          (nextc.unit ? 1 : 0);
         if (obstacleness > 1 && (diagonal && obstacleness > 0)) continue;
 
         let next = dists[nexti];
@@ -156,11 +215,14 @@ export default class Terrain {
       }
     }
 
-    for(let i=0; i<dists.length; i++){
-      if(!this.cells[i].standable)
-        dists[i][0] = Number.MAX_VALUE;
+    for (let i = 0; i < dists.length; i++) {
+      if (!this.cells[i].standable) dists[i][0] = Number.MAX_VALUE;
     }
     return dists;
+  }
+
+  safeCid(x: number, y: number) {
+    if (x >= 0 && y >= 0 && x < this.w && y < this.h) return this.cid(x, y);
   }
 
   cid(x: number, y: number) {

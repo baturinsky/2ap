@@ -1,126 +1,30 @@
 export let mouseAt: [number, number];
 import { eachFrame } from "./Util";
 import Game from "./Game";
-import { h, render, Component } from "preact";
+import { h, render, Component, createRef } from "preact";
+import linkState from "linkstate";
+import Help from "./Help";
 
-let c: HTMLCanvasElement;
-
-let game: Game;
 let paused = false;
-let pageButtons: HTMLElement[];
-let modeButtons: HTMLElement[];
-let pages: HTMLElement[];
-let page = 0;
-let mode = 0;
-let editArea: HTMLTextAreaElement;
-let endButton: HTMLElement;
 
-function gameUpdated(g: Game) {
-  game = g;
-  if (!game) {
-    c.getContext("2d").clearRect(0, 0, 1200, 1200);
-  }
-}
+const PLAY = 0;
+const MENU = 1
+const NEW = 2;
+const LOAD = 3;
+const SAVE = 4;
+const EDITOR = 5;
+const SETTINGS = 6;
+const HELP = 7;
 
-function updateUI() {
-  gameUpdated(game);
-}
+function mountEventsToCanvas(game: Game, c: HTMLCanvasElement) {
+  let drag = 0;
 
-function updateButtons() {
-  for (let i = 0; i < 3; i++) {
-    if (i == mode) {
-      modeButtons[i].classList.add("pressed");
-    } else {
-      modeButtons[i].classList.remove("pressed");
-    }
-  }
-
-  for (let i = 0; i < 3; i++) {
-    if (i == page) {
-      pageButtons[i].classList.add("pressed");
-      pages[i].style.display = "block";
-    } else {
-      pageButtons[i].classList.remove("pressed");
-      pages[i].style.display = "none";
-    }
-  }
-
-  endButton.innerHTML = page == 0 ? "End Turn" : "Apply";
-  endButton.style.visibility = page == 1 ? "hidden" : "visible";
-}
-
-function Buttons(props) {
-  return (
-    <div class="bottom row">
-
-      {
-        [["pai", "vs AI"], ["pp", "2P"], ["aiai", "2AI"]].map(([id, text]) => <button class="small" id={id}>{text}</button>)
-      }
-      
-      &nbsp;
-
-      {
-        [["playb", "Play"], ["helpb", "Help"], ["editb", "Edit"]].map(([id, text]) => <button class="small" id={id}>{text}</button>)
-      }
-
-      <div id="info"></div>
-      <button id="endb">End Turn</button>
-    </div>
-  );
-}
-
-window.onload = function() {
-  c = document.getElementById("main") as HTMLCanvasElement;
-
-  let buttons = document.getElementById("buttons");
-  render(<Buttons />, buttons);
-
- 
-  endButton = document.getElementById("endb");
-
-  pages = ["main", "help", "editor"].map(id => document.getElementById(id));
-
-  pageButtons = ["playb", "helpb", "editb"].map(id =>
-    document.getElementById(id)
-  );
-
-  for (let i = 0; i < 3; i++) {
-    pageButtons[i].onclick = e => {
-      page = i;
-      updateButtons();
-    };
-  }
-
-  modeButtons = ["pai", "pp", "aiai"].map(id => document.getElementById(id));
-
-  for (let i = 0; i < 3; i++) {
-    modeButtons[i].onclick = e => {
-      mode = i;
-      game.setMode(mode);
-      updateButtons();
-    };
-  }
-
-  updateButtons();
-
-  gameUpdated(new Game(c, updateUI));
-
-  endButton.onclick = e => {
-    if (page == 0) {
-      game.endTurn();
-    }
-    if (page == 2) {
-      game.init(editArea.value);
-      page = 0;
-      updateButtons();
-    }
-  };
-
-  editArea = document.getElementById("edit-area") as HTMLTextAreaElement;
+  c.addEventListener("mouseup", e => {
+    drag = 0;
+  });
 
   c.addEventListener("mousedown", e => {
     if (e.button == 2) {
-      console.log(game.terrain);
       game.cancel();
     } else {
       game.click(e.offsetX, e.offsetY);
@@ -128,11 +32,15 @@ window.onload = function() {
   });
 
   c.addEventListener("mousemove", e => {
+    if (e.buttons & 6) {
+      drag++;
+      if (drag >= 3) game.drag(e.movementX, e.movementY);
+    }
     game.hover(e.offsetX, e.offsetY);
   });
 
   c.addEventListener("mouseleave", e => {
-    game.hover(undefined, undefined);
+    game.hover();
   });
 
   c.addEventListener("mouseenter", e => {});
@@ -144,20 +52,170 @@ window.onload = function() {
     },
     false
   );
+}
 
-  document.addEventListener("keyup", e => {});
+export default store => {
+  store.on("@init", () => ({ projects: [] }));
 
-  document.addEventListener("keydown", e => {});
+  store.on("projects/add", ({ projects }, project) => {
+    return { projects: projects.concat([project]) };
+  });
+};
 
-  eachFrame(time => {
+class GUI extends Component {
+  state = { mode: 0, page: "play", game: undefined as Game, stageEdit: "" };
+  canvas = createRef<HTMLCanvasElement>();
+
+  get game() {
+    return this.state.game;
+  }
+
+  gameUpdated(g: Game) {
+    this.setState({ game: g });
+  }
+
+  setMode(i: number) {
+    this.setState({ mode: i });
+    this.game.setMode(i);
+  }
+
+  setPage(page: string) {
+    this.setState({ page: page });
+    if (page == "edit") {
+      this.setState({ stageEdit: this.game.campaignString });
+    }
+    if(page == "save"){
+      let save = this.state.game.serialize();
+      localStorage.setItem("2apSave", save);
+      console.log(save);
+      this.setPage("play")
+    }
+    if(page == "load"){
+      let save = localStorage["2apSave"]
+      if(save)
+        this.game.init(save);
+      this.setPage("play")
+    }
+  }
+
+  clickDone() {
+    let page = this.state.page;
+    if (page == "play") {
+      this.game.endTurn();
+    }
+    if (page == "edit") {
+      this.game.init({customCampaign:this.state.stageEdit});
+      this.setPage("play");
+    }
+  }
+
+  updateUI = (event: { aiTurn?: boolean }) => {
+    this.setState(event);
+  };
+
+  componentDidMount() {
+    this.gameUpdated(new Game(this.updateUI));
+
+    let c = this.canvas.current;
+    mountEventsToCanvas(this.game, c);
+    this.game.setCanvas(c);
+
+    window.onresize = () => {
+      this.game.renderer.resize();
+    };
+
+    eachFrame(time => {
+      if (this.game && !paused && !this.game.over()) this.game.update(time);
+    });
+  }
+
+  displayIfPage(p: string) {
+    return this.state.page == p ? "display:flex" : "display:none";
+  }
+
+  topButtons(): [string, Function|string][] {
+    let page = this.state.page;
+    if(page == "play"){
+      return [
+        ["vs AI", () => this.setMode(0)],
+        ["2P", () => this.setMode(1)],
+        ["2AI", () => this.setMode(2)],
+        [undefined, undefined],
+        ["Menu", "menu"]
+      ];  
+    } else {
+      return [
+        ["New Game", "new"],
+        ["Load", "load"],
+        ["Save", "save"],
+        ["Settings", "settings"],
+        ["Editor", "edit"],
+        ["Help", "help"],
+        [undefined, undefined],
+        ["Continue", "play"]
+      ];  
+    }
+  }
+
+  render(props, { mode, page, aiTurn }) {
+    return (
+      <div>
+        <div class="center-screen">
+          {[
+            <canvas
+              ref={this.canvas}
+              id="main"
+              style={this.displayIfPage("play")}
+            ></canvas>,
+            <div style={this.displayIfPage("help")}>
+              <Help />
+            </div>,
+            <div id="editor" style={this.displayIfPage("edit")}>
+              <textarea
+                onChange={linkState(this, "stageEdit")}
+                cols={100}
+                rows={40}
+                value={this.state.stageEdit}
+                id="edit-area"
+              ></textarea>
+            </div>
+          ]}
+        </div>
+
+        <div id="tooltip"></div>
+        <div class="top-buttons row">
+          {this.topButtons().map(([text, action], i) =>
+            text ? (
+              <button
+                class={(page=="play"?"small":"medium") + (page=="play" && mode == i || page == action ? " pressed" : "")}
+                onClick={e => action instanceof Function?action():this.setPage(action)}
+              >
+                {text}
+              </button>
+            ) : (
+              <span class="flex-spacer"></span>
+            )
+          )}
+        </div>
+        <div class="bottom-buttons row">
+          <div id="info"></div>
+          {(page == "edit" || page == "play" && !aiTurn) && (
+            <button id="endb" onClick={e => this.clickDone()}>
+              {page == "play" ? "End Turn" : "Apply"}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+}
+
+window.onload = function() {
+  render(<GUI />, document.body);
+
+  /*eachFrame(time => {
     if (game && !paused && !game.over()) game.update(time);
     if (page == 0)
       endButton.style.visibility = game.renderer.busy ? "hidden" : "visible";
-  });
-
-  gameUpdated(game);
-
-  console.log(game.terrain.terrainString);
-
-  editArea.value = game.terrain.terrainString;
+  });*/
 };

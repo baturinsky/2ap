@@ -1,11 +1,11 @@
 import * as v2 from "./v2";
 import Terrain from "./Terrain";
-import { tileSize } from "./settings";
 import { V2 } from "./v2";
 import Unit from "./Unit";
 import RenderSchematic from "./RenderSchematic";
 import Team from "./Team";
 import Cell from "./Cell";
+import { defaultCampaign } from "./Campaigns";
 
 export default class Game {
   ctx: CanvasRenderingContext2D;
@@ -14,12 +14,13 @@ export default class Game {
   terrain: Terrain;
   tooltip: HTMLElement;
   info: HTMLElement;
-  //busy: boolean = false;
 
   //eye: Char;
   lastSelectedFaction: Team;
   chosen: Unit;
-  hoveredCell: Cell;
+  hovered: Cell;
+
+  aiTurn: boolean;
 
   static readonly PAI = 0;
   static readonly PP = 1;
@@ -29,64 +30,64 @@ export default class Game {
 
   renderer: RenderSchematic;
 
-  init(terrainString?: string) {
-    if (!terrainString)
-      terrainString = `
-      ##################################################
-      ################# g+         ###++    ##      ++##
-      ################# ++         +                 +##
-      ####################               a+          +##
-      #################                   +    +      ##
-      #################* #          ++++      ##      ##
-      ####################                     +      ##
-      #################        +# + #+a##     g#   ++g##
-      ##################+##  ####################  +####
-      ###   +++  #*+  # g#   a###################      #
-      ###       a#   +# +#    ##########+#++++  #   # *#
-      #   +      ###  #  #    #        # a+++   #   ####
-      #  g+        #  #+ #       +  +  #              ##
-      #   +        ## ## #      g+  +     +           ##
-      #                  #  g #        #+  +++  #     ##
-      #    + ## ####  #     ++#  +  +  #a  +#+  #     ##
-      #    + g# +###  ####    #######  ##########     ##
-      #++  + ## ##a+  +  #   +##+a+     + #  +  ##+   ##
-      #       # +#       #++ +# + +   +g+ # ++ +#+    ##
-      #       # +#   +   #+         +++               ##
-      #   #++## +## #+# ##            +               ##
-      #   +         +         #         ++      #     ##
-      #                  #    # ####### ### ## ### +  ##
-      #   #  a+          #g   # a*##++a     #+  #  +  ##
-      #~~~~~~~~~ ~~~~~~####  ##################### +  ##
-      #~~~~~~~~# #~~~~~~##    a+#+ +                  ##
-      #~~~~~~~~ *              +     # ##          AGA##
-      ###~~~~~~# #~~~~~~~~           #  #          GGA##
-      ####~~~~~~~~~~~~~~~#           # *#          AAA##
-      ##################################################
-      `;
+  campaign: any;
+  customCampaign:boolean;
 
-    this.terrain = new Terrain(terrainString, (o: any) =>
+  init(save?: any) {
+    let campaign: any;
+
+    delete this.chosen;
+    delete this.hovered;
+    delete this.lastSelectedFaction;
+
+    if(save){
+      if(typeof save == "string")
+        save = JSON.parse(save);
+    }
+  
+    if(save && save.customCampaign){
+      this.customCampaign = true;
+      let split = save.customCampaign.split('"');
+      for (let i = 1; i < split.length; i += 2) {
+        split[i] = split[i].replace(/\n/g, "\\n");
+      }
+      campaign = JSON.parse(split.join('"'));
+    }
+
+    if(!campaign)
+      campaign = defaultCampaign;
+
+    this.terrain = new Terrain(campaign, save, (o: any) =>
       this.renderer.draw(o)
     );
 
     this.renderer.synch();
+
+    console.log(this.serialize());
   }
 
-  constructor(
-    public canvas: HTMLCanvasElement,
-    public updateUI: Function,
-    terrainString?: string
-  ) {
+  canvas: HTMLCanvasElement;
+
+  serialize() {
+    return JSON.stringify({
+      terrain: this.terrain.serialize(),
+      customCampaign:this.customCampaign?this.campaign:false
+    });
+  }
+
+  setCanvas(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
-    this.ctx.imageSmoothingEnabled = false;
+    if (this.renderer) this.renderer.resize();
+  }
+
+  constructor(public updateUI: Function) {
     this.tooltip = document.getElementById("tooltip");
     this.info = document.getElementById("info");
 
-    this.canvas.height = this.canvas.clientHeight;
-    this.canvas.width = this.canvas.clientWidth;
+    this.renderer = new RenderSchematic(this);
 
-    this.renderer = new RenderSchematic(this, this.canvas);
-
-    this.init(terrainString);
+    this.init();
   }
 
   over() {
@@ -103,7 +104,7 @@ export default class Game {
 
     this.renderer.render(this.ctx);
 
-    if (this.over()) this.updateUI();
+    if (this.over()) this.updateUI({ over: true });
 
     if (this.chosen && !this.chosen.alive) {
       delete this.chosen;
@@ -132,7 +133,7 @@ export default class Game {
   }
 
   click(x: number, y: number) {
-    let cell = this.renderer.cellAtScreen(x, y);
+    let cell = this.renderer.cellAtScreenPos(x, y);
     this.clickCell(cell);
     this.renderer.resetCanvasCache();
   }
@@ -184,20 +185,26 @@ export default class Game {
     this.renderer.resetCanvasCache();
   }
 
-  hover(x: number, y: number) {
-    let cell = this.renderer.cellAtScreen(x, y);
+  momentum: V2 = [0, 0];
 
-    if (this.hoveredCell == cell) return;
+  drag(dx: number, dy: number) {
+    this.renderer.screenPos = v2.sum(this.renderer.screenPos, [dx, dy]);
+  }
+
+  hover(x?: number, y?: number) {
+    let cell = this.renderer.cellAtScreenPos(x, y);
+
+    if (this.hovered == cell) return;
 
     if (!cell) {
-      delete this.hoveredCell;
+      delete this.hovered;
       this.renderer.resetCanvasCache();
       return;
     }
 
     if (!cell) return;
 
-    this.hoveredCell = cell;
+    this.hovered = cell;
 
     let cursor = "default";
     if ((this.chosen && this.chosen.reachable(cell)) || cell.unit)
@@ -206,7 +213,7 @@ export default class Game {
     if (this.chosen && this.chosen.canDamage(cell.unit)) {
       cursor = "crosshair";
       this.updateTooltip(
-        this.renderer.cidToCenter(cell.cid),
+        this.renderer.cidToCenterScreen(cell.cid),
         `${this.chosen.hitChance(cell.unit)}% ${this.chosen.gun
           .averageDamage(this.chosen, cell.unit)
           .toFixed(1)}`
@@ -228,12 +235,17 @@ export default class Game {
   async endTurn() {
     delete this.chosen;
 
-    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].think();
-    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].think();
-    for (let c of this.terrain.units) {
-      c.ap = 2;
-    }
+    this.aiTurn = true;
+    this.updateUI({ aiMoving: true });
+
+    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].aiTurn();
+    this.terrain.teams[Team.RED].beginTurn();
+    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].aiTurn();
+    this.terrain.teams[Team.BLUE].beginTurn();
     this.renderer.resetCanvasCache();
+
+    this.aiTurn = false;
+    this.updateUI({ aiMoving: false });
   }
 
   toggleMode() {
@@ -246,41 +258,17 @@ export default class Game {
   }
 
   get hoveredChar() {
-    if (this.hoveredCell) return this.hoveredCell.unit;
+    if (this.hovered) return this.hovered.unit;
+  }
+
+  get campaignString() {
+    let s = JSON.stringify(this.campaign || defaultCampaign, null, " ").replace(/\\n/g, "\n");
+    return s;
   }
 }
 
 /*
 
-      ##################################################
-      #      #  a      ++++# + #    ++#  s             #
-      # #    #  +         +#   #    ++#  ++++++++      #
-      #      +  +         +#   #    ++#  ++++++++      #
-      #S#    +  +         +# * #      #                #
-      #      #  +          #   #      #                #
-      # #    #             #   #      #                #
-      #      #  +          ##a## ######                #
-      #             *                                  #
-      #                                                #
-      #A#    #             #s         #a     ~~~       #
-      #      #  +          #          #    ~~~~~~      #
-      #A#    #  #      #a  #  ###    ++   ~~~ A ~~~    #
-      #      #  #      #   #  #      ++       * ~~~    #
-      #G#    #  ########   #  #      +#    ~    ~~     #
-      #      #             #          #    ~~~~~~~     #
-      # #    ######  ###########  #####      ~~~~      #
-      #      #++++      ++ # +        #                #
-      #S#    #+            # +   ++   +                #
-      #      #            +#          #                #
-      #         ######g    #       +  #                #
-      #         ######g    #####  #####                #
-      #                    #   g      #      #        +#
-      #      #          +  #                         ++#
-      #G#    #+    *       #+++    +++#   #     #    ++#
-      #      #++      +    #          #g               #
-      # #    ######++###########++##########    ########
-      #                 S+                             #
-      #         +              A+                      #
-      ##################################################
+
 
 */

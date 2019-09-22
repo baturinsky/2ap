@@ -1,6 +1,5 @@
 import Terrain from "./Terrain";
 import { Context2d, idiv, createCanvas, canvasCache, Canvas2d } from "./Util";
-import { tileSize } from "./settings";
 import Unit from "./Unit";
 import Cell from "./Cell";
 import MovingText from "./MovingText";
@@ -18,7 +17,7 @@ const dashInterval = 4;
 class Doll {
   at: V2;
   constructor(public unit: Unit, renderer: RenderSchematic) {
-    this.at = renderer.cidToScreen(unit.cid);
+    this.at = renderer.cidToPoint(unit.cid);
   }
 }
 
@@ -36,59 +35,13 @@ export default class RenderSchematic {
 
   dolls: Doll[] = [];
 
-  static readonly ap1Sprite = canvasCache([tileSize, tileSize], ctx => {
-    ctx.strokeStyle = "#555";
-    ctx.strokeRect(4.5, 4.5, tileSize - 8, tileSize - 8);
-  });
+  tileSize = 32;
 
-  static readonly ap2Sprite = canvasCache([tileSize, tileSize], ctx => {
-    ctx.strokeStyle = "#bbb";
-    ctx.strokeRect(4.5, 4.5, tileSize - 8, tileSize - 8);
-  });
+  screenPos = [0, 0] as V2;
 
-  static readonly hiddenSprite = canvasCache([tileSize, tileSize], ctx => {
-    ctx.fillStyle = `rgba(0,0,0,0.12)`;
-    ctx.fillRect(0, 0, tileSize, tileSize);
-  });
-
-  static readonly dashPattern = canvasCache(
-    [dashInterval, dashInterval],
-    ctx => {
-      for (let i = 0; i < dashInterval; i++) {
-        ctx.fillRect(i, i, 1, 1);
-      }
-    }
-  );
-
-  static readonly wavePattern = canvasCache([12, 12], ctx => {
-    ctx.beginPath();
-    ctx.arc(6.5, 4, 7, 7, Math.PI);
-    ctx.stroke();
-  });
-
-  static readonly crossPattern = canvasCache([3, 3], ctx => {
-    for (let i = 0; i < dashInterval; i++) {
-      ctx.fillRect(dashInterval - i - 1, i, 1, 1);
-      ctx.fillRect(i, i, 1, 1);
-    }
-  });
-
-  static readonly highTile = canvasCache([tileSize, tileSize], ctx => {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, tileSize, tileSize);
-  });
-
-  static readonly lowTile = canvasCache([tileSize, tileSize], ctx => {
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, tileSize, tileSize);
-    ctx.fillStyle = ctx.createPattern(RenderSchematic.dashPattern, "repeat");
-    ctx.fillRect(0, 0, tileSize, tileSize);
-  });
-
-  static readonly waterTile = canvasCache([tileSize, tileSize], ctx => {
-    ctx.fillStyle = ctx.createPattern(RenderSchematic.wavePattern, "repeat");
-    ctx.fillRect(0, 0, tileSize, tileSize);
-  });
+  get canvas(){
+    return this.game.canvas;
+  }
 
   synch() {
     this.dolls = this.terrain.units.map(unit => new Doll(unit, this));
@@ -99,9 +52,28 @@ export default class RenderSchematic {
     return this.game.terrain;
   }
 
-  constructor(public game: Game, public canvas: HTMLCanvasElement) {
+  constructor(public game: Game) {
+    this.initSprites();
+  }
+
+  resize() {
+    if(!this.canvas)
+      return;
+
+    this.canvas.width = this.canvas.clientWidth;
+    this.canvas.height = this.canvas.clientHeight;
+
     this.width = this.canvas.clientWidth;
     this.height = this.canvas.clientHeight;
+
+    if (this.terrain)
+      this.screenPos = [
+        0.5 * (this.width - this.terrain.w * this.tileSize),
+        0.5 * (this.height - this.terrain.h * this.tileSize)
+      ];
+
+    this.canvas.getContext("2d").imageSmoothingEnabled = false;    
+
   }
 
   update(dTime: number) {
@@ -126,21 +98,21 @@ export default class RenderSchematic {
   }
 
   render(ctx: Context2d): boolean {
+    if(!ctx)
+      return;
+
     ctx.clearRect(0, 0, this.width, this.height);
 
     let t = this.terrain;
 
-    if (!this.canvasCache || this.canvasCacheOutdated) this.updateCanvasCache();
-    ctx.clearRect(0, 0, t.w * tileSize, t.h * tileSize);
-
     ctx.save();
-    /*ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 1;
-    ctx.shadowOffsetY = 1;
-    ctx.shadowColor = "#444";*/
+
+    ctx.translate(...this.screenPos);
+
+    if (!this.canvasCache || this.canvasCacheOutdated) this.updateCanvasCache();
+    ctx.clearRect(0, 0, t.w * this.tileSize, t.h * this.tileSize);
 
     ctx.drawImage(this.canvasCache, 0, 0);
-    ctx.restore();
 
     for (let d of this.dolls) {
       this.renderDoll(ctx, d);
@@ -151,7 +123,9 @@ export default class RenderSchematic {
     if (this.animQueue.length > 0 && this.animQueue[0].render)
       this.animQueue[0].render(ctx);
 
-    if (!this.busy) this.renderPath(ctx, this.game.hoveredCell);
+    if (!this.busy) this.renderPath(ctx, this.game.hovered);
+
+    ctx.restore();
 
     return this.animQueue.length > 0;
   }
@@ -170,26 +144,26 @@ export default class RenderSchematic {
 
     if (!unit.reachable(cell)) return;
 
-    let end = this.cidToCenter(cell.cid);
+    let end = this.cidToCenterPoint(cell.cid);
 
     ctx.beginPath();
     if (unit.reachable(cell))
-      ctx.arc(end[0], end[1], tileSize / 4, 0, Math.PI * 2);
+      ctx.arc(end[0], end[1], this.tileSize / 4, 0, Math.PI * 2);
     else {
-      ctx.moveTo(end[0] - tileSize / 4, end[1] - tileSize / 4);
-      ctx.lineTo(end[0] + tileSize / 4, end[1] + tileSize / 4);
+      ctx.moveTo(end[0] - this.tileSize / 4, end[1] - this.tileSize / 4);
+      ctx.lineTo(end[0] + this.tileSize / 4, end[1] + this.tileSize / 4);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(end[0] - tileSize / 4, end[1] + tileSize / 4);
-      ctx.lineTo(end[0] + tileSize / 4, end[1] - tileSize / 4);
+      ctx.moveTo(end[0] - this.tileSize / 4, end[1] + this.tileSize / 4);
+      ctx.lineTo(end[0] + this.tileSize / 4, end[1] - this.tileSize / 4);
     }
     ctx.stroke();
 
     let path = unit.pathTo(cell);
 
     ctx.beginPath();
-    ctx.moveTo(...this.cidToCenter(path[0].cid));
-    for (let i of path) ctx.lineTo(...this.cidToCenter(i.cid));
+    ctx.moveTo(...this.cidToCenterPoint(path[0].cid));
+    for (let i of path) ctx.lineTo(...this.cidToCenterPoint(i.cid));
     ctx.stroke();
   }
 
@@ -215,14 +189,12 @@ export default class RenderSchematic {
   }
 
   renderCell(ctx: Context2d, cell: Cell) {
-    let at = this.cidToScreen(cell.cid);
+    let at = this.cidToPoint(cell.cid);
 
-    let sprite = [, RenderSchematic.lowTile, RenderSchematic.highTile][
-      cell.obstacle
-    ];
+    let sprite = [, this.lowTile, this.highTile][cell.obstacle];
 
     if (cell.hole) {
-      sprite = RenderSchematic.waterTile;
+      sprite = this.waterTile;
     }
 
     if (sprite) ctx.drawImage(sprite, at[0], at[1]);
@@ -230,37 +202,35 @@ export default class RenderSchematic {
     if (cell.goody) {
       ctx.translate(...at);
       ctx.fillStyle = "#080";
-      ctx.fillRect(tileSize * 0.35, 0, tileSize * 0.3, tileSize);
-      ctx.fillRect(0, tileSize * 0.35, tileSize, tileSize * 0.3);
+      ctx.fillRect(this.tileSize * 0.35, 0, this.tileSize * 0.3, this.tileSize);
+      ctx.fillRect(0, this.tileSize * 0.35, this.tileSize, this.tileSize * 0.3);
       ctx.translate(...v2.scale(at, -1));
     }
-
   }
 
   renderCellUI(ctx: Context2d, cell: Cell) {
-    let at = this.cidToScreen(cell.cid);
+    let at = this.cidToPoint(cell.cid);
     let g = this.game;
 
-    if (renderThreats) this.renderThreats(ctx, cell);
 
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
 
-    if (g.hoveredCell) {
-      let xfov = g.hoveredCell.xfov.has(cell.cid);
-      let dfov = g.hoveredCell.rfov.has(cell.cid);
+    if (g.hovered && !g.hovered.opaque) {
+      let xfov = g.hovered.xfov.has(cell.cid);
+      let dfov = g.hovered.rfov.has(cell.cid);
       if (!dfov) {
         ctx.fillStyle = `rgba(${xfov ? "50,50,0,0.04" : "0,0,50,0.1"})`;
-        ctx.fillRect(at[0], at[1], tileSize, tileSize);
+        ctx.fillRect(at[0], at[1], this.tileSize, this.tileSize);
       }
+
+      if (renderThreats) this.renderThreats(ctx, cell);
     }
 
     if (g.chosen && g.chosen.dists && !this.busy) {
       let moves = g.chosen.apCost(cell);
       if (moves > 0 && moves <= g.chosen.ap) {
-        let img = [, RenderSchematic.ap1Sprite, RenderSchematic.ap2Sprite][
-          Math.floor(moves)
-        ];
+        let img = [, this.ap1Sprite, this.ap2Sprite][Math.floor(moves)];
         if (img) ctx.drawImage(img, at[0], at[1]);
       }
     }
@@ -268,21 +238,20 @@ export default class RenderSchematic {
     if (
       renderPovs &&
       cell.povs &&
-      cell.peeked.includes(this.game.hoveredCell)
+      cell.peeked.includes(this.game.hovered)
     ) {
       ctx.strokeStyle = `rgba(0,0,0,0.5)`;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.arc(
-        at[0] + tileSize / 2,
-        at[1] + tileSize / 2,
-        tileSize / 4,
+        at[0] + this.tileSize / 2,
+        at[1] + this.tileSize / 2,
+        this.tileSize / 4,
         0,
         Math.PI * 2
       );
       ctx.stroke();
     }
-
   }
 
   renderDoll(ctx: Context2d, doll: Doll) {
@@ -302,11 +271,16 @@ export default class RenderSchematic {
 
   outline(ctx: Context2d, doll: Doll, width = 2) {
     ctx.save();
-    //console.assert(tile.unit.blue)
     ctx.strokeStyle = doll.unit.strokeColor;
     ctx.lineWidth = width;
     ctx.beginPath();
-    ctx.arc(tileSize / 2, tileSize / 2, tileSize * 0.4, 0, Math.PI * 2);
+    ctx.arc(
+      this.tileSize / 2,
+      this.tileSize / 2,
+      this.tileSize * 0.4,
+      0,
+      Math.PI * 2
+    );
     ctx.stroke();
     ctx.restore();
   }
@@ -319,7 +293,7 @@ export default class RenderSchematic {
     state.push(this.dollTint(doll));
     let key = state.join(",");
     if (!(key in this.dollCache))
-      this.dollCache[key] = canvasCache([tileSize, tileSize], ctx =>
+      this.dollCache[key] = canvasCache([this.tileSize, this.tileSize], ctx =>
         this.renderDollBody(ctx, doll, this.dollTint(doll))
       );
     ctx.drawImage(this.dollCache[key], 0, 0);
@@ -329,8 +303,8 @@ export default class RenderSchematic {
     if (this.busy || this.terrain.aiTurn) return 0;
     let unit = doll.unit;
     let flankNum = 0;
-    let hover = this.game.hoveredCell;
-    if (hover && hover.xfov) {
+    let hover = this.game.hovered;
+    if (hover && !hover.opaque && hover.xfov) {
       let visible =
         hover.xfov.has(unit.cid) || unit.team == this.game.lastSelectedFaction;
       if (visible)
@@ -339,7 +313,7 @@ export default class RenderSchematic {
           (this.terrain.cover(hover, unit.cell) == 0 ? 2 : 0);
       else flankNum = 4;
     }
-    if (!this.game.hoveredCell) flankNum = 0;
+    if (!this.game.hovered) flankNum = 0;
 
     return flankNum;
   }
@@ -355,7 +329,13 @@ export default class RenderSchematic {
     ctx.shadowOffsetY = 1;
     ctx.shadowBlur = 4;
     ctx.beginPath();
-    ctx.arc(0.5 * tileSize, 0.5 * tileSize, tileSize * 0.4, 0, Math.PI * 2);
+    ctx.arc(
+      0.5 * this.tileSize,
+      0.5 * this.tileSize,
+      this.tileSize * 0.4,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
     ctx.shadowColor = `rgba(0,0,0,0)`;
 
@@ -364,19 +344,25 @@ export default class RenderSchematic {
       let angle = Math.PI * (1 - i / (unit.maxHP - 1));
       let v = v2.fromAngle(angle);
       ctx.beginPath();
-      ctx.moveTo((0.5 + v[0] * 0.4) * tileSize, (0.5 + v[1] * 0.4) * tileSize);
-      ctx.lineTo((0.5 + v[0] * 0.5) * tileSize, (0.5 + v[1] * 0.5) * tileSize);
+      ctx.moveTo(
+        (0.5 + v[0] * 0.4) * this.tileSize,
+        (0.5 + v[1] * 0.4) * this.tileSize
+      );
+      ctx.lineTo(
+        (0.5 + v[0] * 0.5) * this.tileSize,
+        (0.5 + v[1] * 0.5) * this.tileSize
+      );
       ctx.stroke();
     }
     ctx.lineWidth = 1;
 
     ctx.fillStyle = unit.strokeColor;
     ctx.textAlign = "center";
-    ctx.font = `bold ${tileSize / 2}pt Courier`;
+    ctx.font = `bold ${this.tileSize / 2}pt Courier`;
     ctx.fillText(
-      Unit.letters[unit.kind].toUpperCase(),
-      0.5 * tileSize,
-      0.66 * tileSize
+      unit.symbol.toUpperCase(),
+      0.5 * this.tileSize,
+      0.66 * this.tileSize
     );
     ctx.stroke();
 
@@ -390,29 +376,35 @@ export default class RenderSchematic {
       ctx.fill();
       if (unit.ap > 1) {
         ctx.beginPath();
-        ctx.moveTo(tileSize - 1, 1);
-        ctx.lineTo(tileSize - 6, 1);
-        ctx.lineTo(+tileSize - 1, 6);
+        ctx.moveTo(this.tileSize - 1, 1);
+        ctx.lineTo(this.tileSize - 6, 1);
+        ctx.lineTo(+this.tileSize - 1, 6);
         ctx.closePath();
         ctx.fill();
       }
     }
   }
 
-  cidToScreen(ind: number): V2 {
-    return this.terrain.fromCid(ind).map(a => a * tileSize) as V2;
+  cidToPoint(ind: number): V2 {
+    return this.terrain.fromCid(ind).map(a => a * this.tileSize) as V2;
   }
 
-  cidToCenter(ind: number): V2 {
-    return this.terrain.fromCid(ind).map(a => (a + 0.5) * tileSize) as V2;
+  cidToCenterPoint(ind: number): V2 {
+    return v2.scale(v2.sum(this.terrain.fromCid(ind), [0.5, 0.5]), this.tileSize);
   }
 
-  cidScreen(x: number, y: number) {
-    return this.terrain.cid(idiv(x, tileSize), idiv(y, tileSize));
+  cidToCenterScreen(ind: number): V2 {
+    return v2.sum(this.cidToCenterPoint(ind), this.screenPos);
   }
 
-  cellAtScreen(x: number, y: number): Cell {
-    return this.terrain.cells[this.cidScreen(x, y)];
+  cidFromPoint(x: number, y: number) {        
+    return this.terrain.safeCid(idiv(x, this.tileSize), idiv(y, this.tileSize));
+  }
+
+  cellAtScreenPos(x: number, y: number): Cell {
+    return this.terrain.cells[      
+      this.cidFromPoint(...v2.sub([x, y], this.screenPos))
+    ];
   }
 
   get animationSpeed() {
@@ -422,18 +414,23 @@ export default class RenderSchematic {
   updateCanvasCache() {
     if (!this.canvasCache)
       this.canvasCache = createCanvas(
-        this.terrain.w * tileSize,
-        this.terrain.h * tileSize
+        this.terrain.w * this.tileSize,
+        this.terrain.h * this.tileSize
       );
 
     if (!this.canvasTerrain)
       this.canvasTerrain = createCanvas(
-        this.terrain.w * tileSize,
-        this.terrain.h * tileSize
+        this.terrain.w * this.tileSize,
+        this.terrain.h * this.tileSize
       );
 
     let tctx = this.canvasTerrain.getContext("2d");
-    tctx.clearRect(0, 0, this.terrain.w * tileSize, this.terrain.h * tileSize);
+    tctx.clearRect(
+      0,
+      0,
+      this.terrain.w * this.tileSize,
+      this.terrain.h * this.tileSize
+    );
     for (let i = 0; i < this.terrain.cells.length; i++) {
       let cell = this.terrain.cells[i];
       this.renderCell(tctx, cell);
@@ -441,7 +438,12 @@ export default class RenderSchematic {
 
     let ctx = this.canvasCache.getContext("2d");
 
-    ctx.clearRect(0, 0, this.terrain.w * tileSize, this.terrain.h * tileSize);
+    ctx.clearRect(
+      0,
+      0,
+      this.terrain.w * this.tileSize,
+      this.terrain.h * this.tileSize
+    );
 
     ctx.save();
     ctx.shadowBlur = 4;
@@ -497,7 +499,7 @@ export default class RenderSchematic {
     completely: for (a of tiles[0].povs)
       for (b of tiles[1].povs) {
         if (a.rfov.has(b.cid)) {
-          points = [a, b].map(v => this.cidToCenter(v.cid)) as [V2, V2];
+          points = [a, b].map(v => this.cidToCenterPoint(v.cid)) as [V2, V2];
           break completely;
         }
       }
@@ -517,8 +519,8 @@ export default class RenderSchematic {
           for (let i = 0; i < 2; i++) {
             let doll = [fdoll, tdoll][i];
             doll.at = v2.lerp(
-              this.cidToScreen([from, to][i]),
-              v2.sub(points[i], [tileSize / 2, tileSize / 2]),
+              this.cidToPoint([from, to][i]),
+              v2.sub(points[i], [this.tileSize / 2, this.tileSize / 2]),
               peek
             );
           }
@@ -531,8 +533,8 @@ export default class RenderSchematic {
 
         if (time > 3) {
           this.text(points[1], dmg > 0 ? `-${dmg}` : "MISS");
-          fdoll.at = this.cidToScreen(fdoll.unit.cid);
-          tdoll.at = this.cidToScreen(tdoll.unit.cid);
+          fdoll.at = this.cidToPoint(fdoll.unit.cid);
+          tdoll.at = this.cidToPoint(tdoll.unit.cid);
           return false;
         }
         return true;
@@ -544,7 +546,7 @@ export default class RenderSchematic {
   }
 
   walk(doll: Doll, steps: Cell[]) {
-    let path = steps.map(v => this.cidToScreen(v.cid)) as [V2, V2];
+    let path = steps.map(v => this.cidToPoint(v.cid)) as [V2, V2];
     let time = 0;
     this.animQueue.push({
       update: dTime => {
@@ -595,5 +597,68 @@ export default class RenderSchematic {
 
   get busy() {
     return this.animQueue.length > 0;
+  }
+
+  ap1Sprite: Canvas2d;
+  ap2Sprite: Canvas2d;
+  hiddenSprite: Canvas2d;
+  dashPattern: Canvas2d;
+  wavePattern: Canvas2d;
+  crossPattern: Canvas2d;
+  highTile: Canvas2d;
+  lowTile: Canvas2d;
+  waterTile: Canvas2d;
+
+  initSprites() {
+    this.ap1Sprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.strokeStyle = "#555";
+      ctx.strokeRect(4.5, 4.5, this.tileSize - 8, this.tileSize - 8);
+    });
+
+    this.ap2Sprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.strokeStyle = "#bbb";
+      ctx.strokeRect(4.5, 4.5, this.tileSize - 8, this.tileSize - 8);
+    });
+
+    this.hiddenSprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.fillStyle = `rgba(0,0,0,0.12)`;
+      ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+    });
+
+    this.dashPattern = canvasCache([dashInterval, dashInterval], ctx => {
+      for (let i = 0; i < dashInterval; i++) {
+        ctx.fillRect(i, i, 1, 1);
+      }
+    });
+
+    this.wavePattern = canvasCache([8, 8], ctx => {
+      ctx.beginPath();
+      ctx.arc(4.5, 2, 5, 0, Math.PI);
+      ctx.stroke();
+    });
+
+    this.crossPattern = canvasCache([3, 3], ctx => {
+      for (let i = 0; i < dashInterval; i++) {
+        ctx.fillRect(dashInterval - i - 1, i, 1, 1);
+        ctx.fillRect(i, i, 1, 1);
+      }
+    });
+
+    this.highTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+    });
+
+    this.lowTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+      ctx.fillStyle = ctx.createPattern(this.dashPattern, "repeat");
+      ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+    });
+
+    this.waterTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+      ctx.fillStyle = ctx.createPattern(this.wavePattern, "repeat");
+      ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+    });
   }
 }

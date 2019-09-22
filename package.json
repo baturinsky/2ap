@@ -30,9 +30,11 @@
   "dependencies": {
     "jsfx": "^0.0.1",
     "jsfxr": "^0.0.1",
+    "linkstate": "^1.1.1",
     "preact": "^8.5.2",
     "rollup-plugin-es6-class-minify": "^1.1.0",
     "rollup-plugin-sourcemaps": "^0.4.2",
+    "storeon": "^0.9.5",
     "temp-dir": "^2.0.0"
   }
 }

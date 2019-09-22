@@ -1,12 +1,9 @@
 import Gun from "./Gun";
-import { canvasCache, idiv, Context2d, max } from "./Util";
-import { tileSize } from "./settings";
+import { idiv, max } from "./Util";
 import Terrain from "./Terrain";
 import Cell from "./Cell";
 import * as v2 from "./v2";
-import { V2 } from "./v2";
 import * as lang from "./lang";
-import Game from "./Game";
 import Team from "./Team";
 
 export default class Unit {
@@ -19,8 +16,6 @@ export default class Unit {
   static readonly HEAVY = 6;
   static readonly COMMANDER = 7;
 
-  static letters = "`gasrmhc".split("");
-
   dists: number[][];
 
   speed = 5;
@@ -32,44 +27,52 @@ export default class Unit {
   sight = 20;
   def = 0;
 
+  aggression = 0;
+  name = "dude";
+
+  symbol = "d";
+
+  //static readonly seralizedFields = "hp ap cid symbol".split(" ");
+
+  serialize() {
+    return {
+      hp: this.hp,
+      ap: this.ap,
+      cid: this.cid,
+      symbol: this.symbol
+    };
+  }
+
   constructor(
     public terrain: Terrain,
-    public kind: number,
+    public config: any,
     public team: Team,
     public cid: number,
     public gun = new Gun()
   ) {
-    if (kind != Unit.EYE) terrain.units.push(this);
-
-    switch (kind) {
-      case Unit.GUNNER:
-        this.speed = 4;
-        this.hp = 14;
-        break;
-      case Unit.ASSAULT:
-        this.speed = 6;
-        this.armor = 1;
-        this.gun = Gun.SHOTGUN;
-        break;
-      case Unit.SNIPER:
-        this.hp = 7;
-        this.def = 10;
-        this.gun = Gun.SNIPER;
-        break;
-    }
-    //console.log(this);
-
-    this.maxHP = this.hp;
+    terrain.units.push(this);
+    Object.assign(this, config);
+    this.hp = this.maxHP;
+    this.gun = terrain.campaign.guns[config.gun];
   }
 
-  static from(terrain: Terrain, letter: string, cid: number) {
-    let io = Unit.letters.indexOf(letter);
-    if (io >= 0) return new Unit(terrain, io, terrain.teams[Team.RED], cid);
-    io = Unit.letters.indexOf(letter.toLowerCase());
-    if (io >= 0) return new Unit(terrain, io, terrain.teams[Team.BLUE], cid);
+  static from(
+    terrain: Terrain,
+    o: { symbol: string; cid: number; hp?: number; ap?: number }
+  ) {
+    let symbol: string = o.symbol;
+    let cid: number = o.cid;
+    let team =
+      terrain.teams[symbol.toUpperCase() == symbol ? Team.BLUE : Team.RED];
+    let conf = terrain.campaign.units[symbol.toLowerCase()];
+    if (!conf) return;
+    conf.symbol = symbol.toLowerCase();
+    let u = new Unit(terrain, conf, team, cid);        
+    Object.assign(u, o);
+    if(terrain.cells[u.cid])
+      terrain.cells[u.cid].unit = u;
+    return u;
   }
-
-  //sprites: { [key: number]: OffscreenCanvas } = {};
 
   get blue() {
     return this.team == this.terrain.we;
@@ -110,8 +113,6 @@ export default class Unit {
     this.dists = this.terrain.calcDists(this.cid);
   }
 
-  
-
   calculate() {
     this.calculateDists();
   }
@@ -136,7 +137,7 @@ export default class Unit {
   }
 
   hitChance(target: Unit, cell?: Cell, direct = false): number {
-    let fov = direct?this.cell.dfov:this.cell.xfov
+    let fov = direct ? this.cell.dfov : this.cell.xfov;
     if (!fov.has((cell || target.cell).cid)) return 0;
     let cover = this.cover(cell || target.cell);
     if (cover == -1) return 0;
@@ -144,7 +145,7 @@ export default class Unit {
     let dodge = target.def;
     let chance = Math.round(
       accuracy -
-        cover * 20 -
+        cover * 25 -
         dodge -
         this.gun.accuracyPenalty(this.dist(target))
     );
@@ -213,9 +214,11 @@ export default class Unit {
     let owPoints = [] as { moment: number; enemy: Unit }[];
     for (let enemy of enemies) {
       if (enemy.ap == 0) continue;
-      let bestMoment = max(path, step => !step.unit && enemy.averageDamage(this, step, true));
+      let bestMoment = max(
+        path,
+        step => !step.unit && enemy.averageDamage(this, step, true)
+      );
       if (bestMoment && bestMoment.val >= 1) {
-        console.log(bestMoment.val);
         owPoints.push({ moment: bestMoment.ind, enemy });
       }
     }
@@ -227,11 +230,9 @@ export default class Unit {
       await this.animateWalk(this.pathTo(place));
       this.teleport(place);
       await owPoint.enemy.shoot(place);
-      if(!this.alive)
-        return true;
+      if (!this.alive) return true;
     }
 
-    
     await this.animateWalk(this.pathTo(to));
     this.teleport(to);
 
@@ -279,8 +280,7 @@ export default class Unit {
         team.weakness[i] -
         idiv(d, this.speed) * 0.5 -
         d * 0.001;
-      if (this.kind == Unit.ASSAULT) score -= team.distance[i] * 0.1;
-      if (this.kind == Unit.SNIPER) score += team.distance[i] * 0.1;
+      score += team.distance[i] * this.aggression;
 
       if (score > bestScore) {
         bestScore = score;
@@ -290,9 +290,9 @@ export default class Unit {
     return this.terrain.cells[bestAt];
   }
 
-  averageDamage(tchar: Unit, cell?: Cell, direct=false) {
+  averageDamage(tchar: Unit, cell?: Cell, direct = false) {
     let hitChance = this.hitChance(tchar, cell, direct);
-    return hitChance * this.gun.averageDamage(this, tchar, cell) / 100;
+    return (hitChance * this.gun.averageDamage(this, tchar, cell)) / 100;
   }
 
   bestTarget() {
@@ -321,15 +321,14 @@ export default class Unit {
   }
 
   info() {
-    let name = [, "gunner", "assault", "sniper"][this.kind];
-    return `${name.toUpperCase()} <b>${this.hp}HP</b> ${lang[name]}`;
+    return `${this.name.toUpperCase()} <b>${this.hp}HP</b> ${lang[this.name]}`;
   }
 
   get alive() {
     return this.hp > 0;
   }
 
-  friendly(other:Unit){
+  friendly(other: Unit) {
     return other && this.team == other.team;
   }
 }

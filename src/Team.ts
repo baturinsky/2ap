@@ -11,6 +11,12 @@ export default class Team {
 
   constructor(public terrain: Terrain, public faction: number) {}
 
+  serialize() {
+    return {
+      units: this.units.map(u => u.serialize())
+    };
+  }
+
   calculate() {
     this.strength = [];
     this.weakness = [];
@@ -23,12 +29,12 @@ export default class Team {
       for (let cell of unit.cell.xfov) this.fov.add(cell);
     }
 
-    let enemyTeam = this.terrain.teams[1-this.faction];
+    let enemyTeam = this.terrain.teams[1 - this.faction];
 
     for (let cid of this.fov) {
       let cell = this.terrain.cells[cid];
 
-      for (let enemy of enemyTeam.units) {        
+      for (let enemy of enemyTeam.units) {
         let tcell = enemy.cell;
 
         let strength = (4 - t.cover(cell, tcell)) % 5;
@@ -39,14 +45,13 @@ export default class Team {
 
         if (strength > 0 || weakness > 0) {
           let distance = cell.dist(tcell);
-          if (!(this.distance[cid] <= distance))
-            this.distance[cid] = distance;
+          if (!(this.distance[cid] <= distance)) this.distance[cid] = distance;
         }
       }
     }
   }
 
-  async think() {
+  async aiTurn() {
     this.terrain.aiTurn = true;
 
     this.calculate();
@@ -55,25 +60,30 @@ export default class Team {
         await unit.think();
       }
     }
-    
+
     this.terrain.aiTurn = false;
-
   }
 
-  get units(){
-    return this.terrain.units.filter(c => c.team == this)
+  beginTurn() {
+    for (let c of this.units) {
+      c.ap = 2;
+    }
+    this.terrain.activeTeam = this.faction;
   }
 
-  get enemy(){
-    return this.terrain.teams[1-this.faction]
+  get units() {
+    return this.terrain.units.filter(c => c.team == this);
   }
 
-  get name(){
+  get enemy() {
+    return this.terrain.teams[1 - this.faction];
+  }
+
+  get name() {
     return ["RED", "BLUE"][this.faction];
   }
 
-  get color(){
+  get color() {
     return ["RED", "BLUE"][this.faction];
   }
-
 }

@@ -1,7 +1,6 @@
 import Unit from "./Unit";
 import { canvasCache, Context2d } from "./Util";
 import Terrain from "./Terrain";
-import { tileSize } from "./settings";
 import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
 

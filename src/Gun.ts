@@ -17,27 +17,6 @@ export default class Gun {
 
   name = "Gun";
 
-  static readonly SNIPER = new Gun({
-    name: "Sniper",
-    damageOptimalRange: [1, 30],
-    damagePenaltyPerCell: 0.1,
-    accuracyOptimalRange: [10, 30],
-    accuracyPenaltyPerCell: 1,
-    breach: 1
-  });
-
-  static readonly SHOTGUN = new Gun({
-    name: "Shotgun",
-    damage: [6, 7],
-    damageOptimalRange: [1, 1],
-    damagePenaltyMax: 4,
-    damagePenaltyPerCell: 0.3,
-    accuracy: 80,
-    accuracyOptimalRange: [1, 1],
-    accuracyPenaltyPerCell: 5,
-    accuracyPenaltyMax: 40
-  });
-
   constructor(o?: any) {
     if (o) Object.assign(this, o);
   }
