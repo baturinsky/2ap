@@ -9,6 +9,7 @@ import * as v2 from "./v2";
 import { V2 } from "./v2";
 import Game from "./Game";
 import Team from "./Team";
+import { insideBorder } from "./settings";
 
 const renderPovs = true;
 const renderThreats = false;
@@ -39,7 +40,9 @@ export default class RenderSchematic {
 
   screenPos = [0, 0] as V2;
 
-  get canvas(){
+  lookingAt:V2;
+
+  get canvas() {
     return this.game.canvas;
   }
 
@@ -57,8 +60,7 @@ export default class RenderSchematic {
   }
 
   resize() {
-    if(!this.canvas)
-      return;
+    if (!this.canvas) return;
 
     this.canvas.width = this.canvas.clientWidth;
     this.canvas.height = this.canvas.clientHeight;
@@ -72,34 +74,40 @@ export default class RenderSchematic {
         0.5 * (this.height - this.terrain.h * this.tileSize)
       ];
 
-    this.canvas.getContext("2d").imageSmoothingEnabled = false;    
-
+    this.canvas.getContext("2d").imageSmoothingEnabled = false;
   }
 
   update(dTime: number) {
-    let anims = this.anim;
-    this.anim = [];
 
-    anims = anims.filter(fx => {
-      return fx.update(dTime);
-    });
+    if(this.lookingAt && v2.dist(this.lookingAt, this.screenPos) > 1){
+      let d = v2.dist(this.lookingAt, this.screenPos);
+      this.screenPos = v2.lerp(this.screenPos, this.lookingAt, Math.min(1, dTime*Math.max(d/100, 5)))
+    } else {
+      delete this.lookingAt;
 
-    this.anim = this.anim.concat(anims);
+      let anims = this.anim;
+      this.anim = [];
 
-    if (this.animQueue.length > 0 && !this.animQueue[0].update(dTime))
-      this.animQueue.shift();
+      anims = anims.filter(fx => {
+        return fx.update(dTime);
+      });
 
-    if (this.animQueue.length == 0 && this.blockingAnimationEnd) {
-      this.blockingAnimationEnd();
-      delete this.blockingAnimationEnd;
+      this.anim = this.anim.concat(anims);
+
+      if (this.animQueue.length > 0 && !this.animQueue[0].update(dTime))
+        this.animQueue.shift();
+
+      if (this.animQueue.length == 0 && this.blockingAnimationEnd) {
+        this.blockingAnimationEnd();
+        delete this.blockingAnimationEnd;
+      }
     }
 
     this.dolls = this.dolls.filter(d => d.unit.alive);
   }
 
   render(ctx: Context2d): boolean {
-    if(!ctx)
-      return;
+    if (!ctx) return;
 
     ctx.clearRect(0, 0, this.width, this.height);
 
@@ -212,7 +220,6 @@ export default class RenderSchematic {
     let at = this.cidToPoint(cell.cid);
     let g = this.game;
 
-
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 2;
 
@@ -235,11 +242,7 @@ export default class RenderSchematic {
       }
     }
 
-    if (
-      renderPovs &&
-      cell.povs &&
-      cell.peeked.includes(this.game.hovered)
-    ) {
+    if (renderPovs && cell.povs && cell.peeked.includes(this.game.hovered)) {
       ctx.strokeStyle = `rgba(0,0,0,0.5)`;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
@@ -390,19 +393,22 @@ export default class RenderSchematic {
   }
 
   cidToCenterPoint(ind: number): V2 {
-    return v2.scale(v2.sum(this.terrain.fromCid(ind), [0.5, 0.5]), this.tileSize);
+    return v2.scale(
+      v2.sum(this.terrain.fromCid(ind), [0.5, 0.5]),
+      this.tileSize
+    );
   }
 
   cidToCenterScreen(ind: number): V2 {
     return v2.sum(this.cidToCenterPoint(ind), this.screenPos);
   }
 
-  cidFromPoint(x: number, y: number) {        
+  cidFromPoint(x: number, y: number) {
     return this.terrain.safeCid(idiv(x, this.tileSize), idiv(y, this.tileSize));
   }
 
   cellAtScreenPos(x: number, y: number): Cell {
-    return this.terrain.cells[      
+    return this.terrain.cells[
       this.cidFromPoint(...v2.sub([x, y], this.screenPos))
     ];
   }
@@ -474,6 +480,7 @@ export default class RenderSchematic {
     ctx.beginPath();
     let delta = v2.norm(v2.sub(to, from), -20);
     let at = v2.lerp(from, to, time);
+    this.lookAt(at);
     let tail = v2.sum(at, delta);
     var grad = ctx.createLinearGradient(tail[0], tail[1], at[0], at[1]);
     grad.addColorStop(0, `rgba(0,0,0,0)`);
@@ -489,10 +496,27 @@ export default class RenderSchematic {
     ctx.strokeStyle = "#000";
   }
 
+  insideScreen(at: V2) {
+    at = v2.sum(at, this.screenPos)
+    return (
+      at[0] >= insideBorder &&
+      at[1] >= insideBorder &&
+      at[0] <= this.width - insideBorder &&
+      at[1] <= this.height - insideBorder
+    );
+  }
+
+  lookAt(at: V2) {
+    //console.log(at);
+    if (this.insideScreen(at)) return;
+    this.lookingAt = [-at[0] + this.width / 2, -at[1] + this.height / 2];
+  }
+
   shoot(from: number, to: number, dmg: number) {
     let tiles = [from, to].map(v => this.terrain.cells[v]);
 
     let points: [V2, V2];
+    let shootPoint: V2;
 
     let a: Cell, b: Cell;
 
@@ -504,6 +528,17 @@ export default class RenderSchematic {
         }
       }
 
+    if (dmg > 0) {
+      shootPoint = points[1];
+    } else {
+      let dir = v2.norm(v2.sub(points[1], points[0]));
+      shootPoint = v2.sum(
+        v2.sum(points[1], v2.rot(dir)),
+        dir,
+        10 * this.tileSize
+      );
+    }
+
     let fdoll = this.dollAt(from);
     let tdoll = this.dollAt(to);
 
@@ -514,7 +549,14 @@ export default class RenderSchematic {
 
     this.animQueue.push({
       update: dTime => {
-        if (time < 1 || time > 2) {
+        if (time >= 1 && time <= 2) {
+          time +=
+            dTime *
+            Math.min(
+              10,
+              (1000 / v2.dist(points[0], shootPoint)) * this.animationSpeed
+            );
+        } else {
           let peek = (time < 1 ? time : 3 - time) * 0.6;
           for (let i = 0; i < 2; i++) {
             let doll = [fdoll, tdoll][i];
@@ -525,10 +567,6 @@ export default class RenderSchematic {
             );
           }
           time += dTime * this.animationSpeed * 10;
-        } else {
-          time +=
-            dTime *
-            Math.min(10, (1000 / v2.dist(...points)) * this.animationSpeed);
         }
 
         if (time > 3) {
@@ -540,7 +578,8 @@ export default class RenderSchematic {
         return true;
       },
       render: (ctx: Context2d) => {
-        if (time > 1 && time < 2) this.renderBullet(ctx, points, time - 1);
+        if (time > 1 && time < 2)
+          this.renderBullet(ctx, [points[0], shootPoint], time - 1);
       }
     });
   }
@@ -562,6 +601,9 @@ export default class RenderSchematic {
           path[Math.floor(time) + 1],
           time - Math.floor(time)
         );
+
+        this.lookAt(doll.at);
+
         return true;
       }
     });

@@ -1,8 +1,6 @@
 Todo 
 
-Main menu
-Full Screen and scrolling
-Support for custom units, custom weapons, multiple stages in editor
+Saving
 Status effects
 Hunker down
 Hidden Movement
@@ -17,6 +15,9 @@ Disjoint UI from game model
 Optimise Blueprint graphics mode
 Walk through light cover
 Overwatch
+Main menu
+Full Screen and scrolling
+Support for custom units, custom weapons, multiple stages in editor
 
 -
 

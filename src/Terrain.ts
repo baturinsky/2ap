@@ -5,8 +5,7 @@ import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
 import Team from "./Team";
 import Gun from "./Gun";
-import { StageConf } from "./Campaigns";
-import { throws } from "assert";
+import { StageConf, CampaignConf } from "./Campaigns";
 
 type V2 = [number, number];
 const sightRange = 20;
@@ -37,8 +36,6 @@ export default class Terrain {
 
   terrainString: string;
 
-  stage: StageConf;
-
   rni = random(1);
 
   activeTeam = 0;
@@ -47,8 +44,6 @@ export default class Terrain {
 
   serialize() {
     return {
-      campaign: this.campaign.name,
-      stage: this.stage.name,
       teams: this.teams.map(t => t.serialize()),
       activeTeam: this.activeTeam
     };
@@ -132,37 +127,28 @@ export default class Terrain {
 
 
   constructor(
-    public campaign: any,
-    save: any,
+    public campaign: CampaignConf,
+    public stage: StageConf,
+    state: any,
     public animate: (any) => Promise<void>
   ) {
-
-    let stageName: string;
-
-    if (save) {
-      stageName = save.stage;
-    }
-
-    stageName = stageName || campaign.startingStage;
-    this.stage =
-      campaign.stages.find(s => s.name == stageName) || campaign.stages[0];
 
     for (let gunId in campaign.guns) {
       campaign.guns[gunId] = new Gun(campaign.guns[gunId]);
     }
     this.init(this.stage.terrain);
 
-    if (save) this.loadState(save);
+    if (state) this.loadState(state);
   }
 
-  loadState(save: any) {
-    if(!save.terrain || !save.terrain.teams)
+  loadState(state: any) {
+    if(!state || !state.teams)
       return;
-      
+
     this.units = [];
     this.cells.forEach(c => delete c.unit);
 
-    this.teams = save.terrain.teams.map((t, i) => {
+    this.teams = state.teams.map((t, i) => {
       let team = new Team(this, i);
       for (let u of t.units) {        
         let unit = Unit.from(this, u);

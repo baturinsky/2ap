@@ -51,12 +51,12 @@ export default class Team {
     }
   }
 
-  async aiTurn() {
+  async think() {
     this.terrain.aiTurn = true;
 
     this.calculate();
     for (let unit of this.terrain.units) {
-      if (unit.team == this) {
+      if (unit.team == this && unit.alive) {
         await unit.think();
       }
     }

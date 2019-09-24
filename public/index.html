@@ -7,6 +7,7 @@
     <style>
       button,
       span,
+      input,
       #tooltip,
       body {
         font-size: 18px;
@@ -80,13 +81,6 @@
         -ms-interpolation-mode: nearest-neighbor;
       }
 
-      /*.field {
-        background: white;
-        box-shadow: 3px 3px 10px 0px rgba(0, 0, 0, 0.7);
-        border: solid 0.5px gray;
-        display: none;
-      }*/
-
       .bottom-buttons {
         position: fixed;
         top: calc(100% - 50px);
@@ -117,8 +111,7 @@
       #info {
         flex-grow: 1;
         font-size: 14px;
-      }     
-
+      }
 
       .small {
         width: 50px;
@@ -155,6 +148,27 @@
         text-align: center;
         width: 100%;
         height: 100%;
+        z-index: 1;
+      }
+
+      .center-horisontal {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding-top:50px;
+      }
+
+      .save-name{
+        width:600px;
+        border: none;
+        border-bottom: solid 1px gray;
+        margin:10px;
+      }
+
+      .save-row{
+        vertical-align: bottom;
       }
 
       textarea {
@@ -162,6 +176,5 @@
       }
     </style>
   </head>
-  <body>
-  </body>
+  <body></body>
 </html>

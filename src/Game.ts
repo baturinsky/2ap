@@ -5,15 +5,13 @@ import Unit from "./Unit";
 import RenderSchematic from "./RenderSchematic";
 import Team from "./Team";
 import Cell from "./Cell";
-import { defaultCampaign } from "./Campaigns";
+import { defaultCampaign, StageConf, CampaignConf } from "./Campaigns";
 
 export default class Game {
   ctx: CanvasRenderingContext2D;
   lastLoopTimeStamp: number;
   time: number = 0;
   terrain: Terrain;
-  tooltip: HTMLElement;
-  info: HTMLElement;
 
   //eye: Char;
   lastSelectedFaction: Team;
@@ -30,49 +28,80 @@ export default class Game {
 
   renderer: RenderSchematic;
 
-  campaign: any;
-  customCampaign:boolean;
+  canvas: HTMLCanvasElement;
 
-  init(save?: any) {
-    let campaign: any;
+  campaign: CampaignConf;
+  stage: StageConf;
+  customCampaign: boolean;
 
+  campaignByName(name: string) {
+    return defaultCampaign;
+  }
+
+  stageByName(name: string) {
+    return (
+      this.campaign.stages.find(s => s.name == name) || this.campaign.stages[0]
+    );
+  }
+
+  static parseWithNewLines(json: string) {
+    let split = json.split('"');
+    for (let i = 1; i < split.length; i += 2) {
+      split[i] = split[i].replace(/\n/g, "\\n");
+    }
+    return JSON.parse(split.join('"'));
+  }
+
+  init(saveString?: string, useState:boolean = true) {
     delete this.chosen;
     delete this.hovered;
     delete this.lastSelectedFaction;
 
-    if(save){
-      if(typeof save == "string")
-        save = JSON.parse(save);
-    }
-  
-    if(save && save.customCampaign){
-      this.customCampaign = true;
-      let split = save.customCampaign.split('"');
-      for (let i = 1; i < split.length; i += 2) {
-        split[i] = split[i].replace(/\n/g, "\\n");
+    let save;
+
+    if (saveString) {
+      save = Game.parseWithNewLines(saveString);
+
+      if (save.campaign) {
+        this.campaign = this.campaignByName(save.campaign);
+      } else {
+        this.campaign = save;
+        this.customCampaign = true;
       }
-      campaign = JSON.parse(split.join('"'));
     }
 
-    if(!campaign)
-      campaign = defaultCampaign;
+    this.campaign = this.campaign || defaultCampaign;
 
-    this.terrain = new Terrain(campaign, save, (o: any) =>
-      this.renderer.draw(o)
+    this.stage = this.stageByName(save && save.stage);
+
+    this.terrain = new Terrain(
+      this.campaign,
+      this.stage,
+      save && useState? save.state : null,
+      (animation: any) => this.renderer.draw(animation)
     );
 
     this.renderer.synch();
-
-    console.log(this.serialize());
   }
 
-  canvas: HTMLCanvasElement;
+  serialize(
+    include: { campaign?: boolean; state?: boolean } = { state: true }
+  ) {
+    let o: any = {};
 
-  serialize() {
-    return JSON.stringify({
-      terrain: this.terrain.serialize(),
-      customCampaign:this.customCampaign?this.campaign:false
-    });
+    if (include.campaign || this.customCampaign) {
+      Object.assign(o, this.campaign);
+    } else {
+      o.campaign = this.campaign.name;
+    }
+
+    if (include.state) {
+      o.state = this.terrain.serialize();
+    }
+
+    o.stage = this.stage.name;
+
+    return JSON.stringify(o, null, "  ").replace(/\\n/g, "\n");
   }
 
   setCanvas(canvas: HTMLCanvasElement) {
@@ -82,9 +111,6 @@ export default class Game {
   }
 
   constructor(public updateUI: Function) {
-    this.tooltip = document.getElementById("tooltip");
-    this.info = document.getElementById("info");
-
     this.renderer = new RenderSchematic(this);
 
     this.init();
@@ -111,25 +137,18 @@ export default class Game {
     }
   }
 
-  updateTooltip(at?: V2, text?: string) {
-    this.tooltip.style.display = at ? "block" : "none";
-    if (at) {
-      this.tooltip.style.left = (
-        at[0] +
-        30 +
-        this.canvas.offsetLeft
-      ).toString();
-      this.tooltip.style.top = at[1].toString();
-      this.tooltip.innerHTML = text;
-    }
+  updateTooltip(tooltipAt?: V2, tooltipText?: string) {
+    this.updateUI({ tooltipAt, tooltipText });
   }
 
   updateInfo(text?: string) {
-    this.info.innerHTML =
-      text ||
-      (this.terrain.victor
-        ? `<H3 style="color:white; background:${this.terrain.victor.color}">${this.terrain.victor.name} side victorious</H3>`
-        : "");
+    this.updateUI({
+      info:
+        text ||
+        (this.terrain.victor
+          ? `<H3 style="color:white; background:${this.terrain.victor.color}">${this.terrain.victor.name} side victorious</H3>`
+          : "")
+    });
   }
 
   click(x: number, y: number) {
@@ -238,9 +257,9 @@ export default class Game {
     this.aiTurn = true;
     this.updateUI({ aiMoving: true });
 
-    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].aiTurn();
+    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].think();
     this.terrain.teams[Team.RED].beginTurn();
-    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].aiTurn();
+    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].think();
     this.terrain.teams[Team.BLUE].beginTurn();
     this.renderer.resetCanvasCache();
 
@@ -259,11 +278,6 @@ export default class Game {
 
   get hoveredChar() {
     if (this.hovered) return this.hovered.unit;
-  }
-
-  get campaignString() {
-    let s = JSON.stringify(this.campaign || defaultCampaign, null, " ").replace(/\\n/g, "\n");
-    return s;
   }
 }
 

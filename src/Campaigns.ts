@@ -1,10 +1,33 @@
-export type StageConf = {name:string, version:string, author:string, terrain:string}
+import Gun from "./Gun";
 
-export let defaultCampaign = {
+export type StageConf = {
+  name: string;
+  version: string;
+  author: string;
+  terrain: string;
+};
+
+export type UnitConf = {
+  name: string;
+  [index: string]: number | string;
+};
+
+export type CampaignConf = {
+  name: string;
+  version: string;
+  author: string;
+  stage: string;
+  guns: Gun | any;
+  custom?: boolean;
+  units: { [key: string]: UnitConf };
+  stages: StageConf[];
+};
+
+export let defaultCampaign: CampaignConf = {
   name: "Default Campaign",
   version: "0.1",
   author: "Baturinsky, Red Knight",
-  startingStage: "Red Knight's Backyard",
+  stage: "Red Knight's Backyard",
   guns: {
     carbine: {
       name: "Carbine",
@@ -47,19 +70,19 @@ export let defaultCampaign = {
 
   units: {
     g: {
-      name: 'Gunner',
+      name: "Gunner",
       speed: 4,
       maxHP: 14,
       gun: "carbine"
     },
     a: {
-      name: 'Assault',
+      name: "Assault",
       speed: 6,
       armor: 1,
       gun: "shotgun"
     },
     s: {
-      name: 'Sharpshooter',
+      name: "Sharpshooter",
       maxHP: 7,
       def: 10,
       gun: "sniper"
