@@ -15,6 +15,8 @@ export default class Gun {
 
   breach = 0;
 
+  maxFocus = 30;
+
   name = "Gun";
 
   constructor(o?: any) {
@@ -30,7 +32,7 @@ export default class Gun {
       diff = dist - this.damageOptimalRange[1];
     }
     //debugger;
-    return Math.min(this.damagePenaltyMax, this.damagePenaltyPerCell * diff);
+    return Math.floor(Math.min(this.damagePenaltyMax, this.damagePenaltyPerCell * diff));
   }
 
   accuracyPenalty(dist: number) {
@@ -42,22 +44,25 @@ export default class Gun {
       diff = dist - this.accuracyOptimalRange[1];
     }
     //debugger;
-    return Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff);
+    return Math.floor(Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff));
   }
 
-  averageDamage(by: Unit, target: Unit, cell?:Cell) {
-    if(!cell)
-      cell = target.cell;
+  averageDamage(by: Unit, tcell: Cell, tunit?:Unit) {
+    if(!tunit)
+      tunit = tcell.unit;
+
     let dmg = (this.damage[1] + this.damage[0]) * 0.5;
-    dmg -= Math.max(0, target.armor - this.breach);
-    dmg -= this.damagePenalty(by.dist(cell));    
+    if(tunit)
+      dmg -= Math.max(0, tcell.unit.armor - this.breach);
+    dmg -= this.damagePenalty(by.dist(tcell));    
     return Math.max(0, Math.round(dmg * 10) / 10);
   }
 
-  damageRoll(by: Unit, target: Unit, rnf: () => number) {
+  damageRoll(by: Unit, tcell: Cell, rnf: () => number) {
     let dmg = rnf() * (this.damage[1] - this.damage[0]) + this.damage[0];
-    dmg -= Math.max(0, target.armor - this.breach);
-    dmg -= this.damagePenalty(by.dist(target));
+    if(tcell.unit)
+      dmg -= Math.max(0, tcell.unit.armor - this.breach);
+    dmg -= this.damagePenalty(by.dist(tcell));
     return Math.max(0, Math.round(dmg));
   }
 }

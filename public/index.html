@@ -21,7 +21,7 @@
       .row {
         display: flex;
         flex-flow: row;
-        justify-content: center;
+        justify-content: space-between;
       }
 
       h1 {
@@ -113,12 +113,16 @@
         font-size: 14px;
       }
 
-      .small {
+      .short {
         width: 50px;
       }
 
       .medium {
         width: 100px;
+      }
+
+      .long{
+        width: 400px;
       }
 
       .flex-spacer {
@@ -136,7 +140,19 @@
         height: 680px;
       }
 
-      #editor {
+      #unitInfo{
+        background: white;
+        box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.7);
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        z-index: 10;
+        width: 400px;
+      }
+
+      #editor{
+        display: flex;
+        flex-direction: column;
       }
 
       .center-screen {
@@ -160,6 +176,10 @@
         padding-top:50px;
       }
 
+      .save{
+        text-align: right;
+      }
+
       .save-name{
         width:600px;
         border: none;
@@ -167,8 +187,30 @@
         margin:10px;
       }
 
+      .save-name[disabled]{
+        background: none;
+        border: none;
+      }
+
       .save-row{
         vertical-align: bottom;
+      }
+
+      .side0{
+        color:blue;
+      }
+
+      .side1{
+        color:red;
+      }
+
+      .to-left{
+        text-align: left;
+      }
+      
+      .nobr{
+        white-space: nowrap;
+        hyphens: none;
       }
 
       textarea {

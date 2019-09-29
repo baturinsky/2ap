@@ -3,8 +3,9 @@ import { idiv, max } from "./Util";
 import Terrain from "./Terrain";
 import Cell from "./Cell";
 import * as v2 from "./v2";
-import * as lang from "./lang";
 import Team from "./Team";
+import { UnitConf, UnitState } from "./Campaigns";
+import { V2 } from "./v2";
 
 export default class Unit {
   static readonly EYE = -1;
@@ -22,6 +23,12 @@ export default class Unit {
   maxHP = 10;
   hp = this.maxHP;
   ap = 2;
+
+  exhaustion = 0;
+  stress = 0;
+  focus: V2 = [0, 0];
+  velocity: V2 = [0, 0];
+
   armor = 0;
 
   sight = 20;
@@ -32,46 +39,57 @@ export default class Unit {
 
   symbol = "d";
 
-  //static readonly seralizedFields = "hp ap cid symbol".split(" ");
+  config: UnitConf;
+  team: Team;
+  gun: Gun;
+
+  get terrain() {
+    return this.cell.terrain;
+  }
+
+  get cid() {
+    return this.cell.cid;
+  }
 
   serialize() {
     return {
+      symbol: this.symbol,
       hp: this.hp,
       ap: this.ap,
       cid: this.cid,
-      symbol: this.symbol
+      exhaustion: this.exhaustion,
+      stress: this.stress,
+      focus: this.focus,
+      velocity: this.velocity
     };
   }
 
-  constructor(
-    public terrain: Terrain,
-    public config: any,
-    public team: Team,
-    public cid: number,
-    public gun = new Gun()
-  ) {
-    terrain.units.push(this);
-    Object.assign(this, config);
-    this.hp = this.maxHP;
-    this.gun = terrain.campaign.guns[config.gun];
-  }
+  static readonly saveFields = "hp ap exhaustion stress focus velocity".split(
+    " "
+  );
 
-  static from(
-    terrain: Terrain,
-    o: { symbol: string; cid: number; hp?: number; ap?: number }
-  ) {
-    let symbol: string = o.symbol;
-    let cid: number = o.cid;
-    let team =
-      terrain.teams[symbol.toUpperCase() == symbol ? Team.BLUE : Team.RED];
-    let conf = terrain.campaign.units[symbol.toLowerCase()];
-    if (!conf) return;
-    conf.symbol = symbol.toLowerCase();
-    let u = new Unit(terrain, conf, team, cid);        
-    Object.assign(u, o);
-    if(terrain.cells[u.cid])
-      terrain.cells[u.cid].unit = u;
-    return u;
+  constructor(public cell: Cell, o: UnitState) {
+    this.symbol = o.symbol.toLowerCase();
+    cell.unit = this;
+
+    let terrain = cell.terrain;
+    this.terrain.units.push(this);
+
+    let conf = terrain.campaign.units[this.symbol];
+
+    Object.assign(this, conf);
+    this.hp = this.maxHP;
+
+    console.assert(conf);
+
+    this.team =
+      terrain.teams[o.symbol.toUpperCase() == o.symbol ? Team.BLUE : Team.RED];
+
+    for (let key of Unit.saveFields) {
+      if (key in o) this[key] = o[key];
+    }
+
+    this.gun = this.terrain.campaign.guns[conf.gun];
   }
 
   get blue() {
@@ -99,10 +117,6 @@ export default class Unit {
   }
   get y() {
     return idiv(this.cid, this.terrain.w);
-  }
-
-  get cell() {
-    return this.terrain.cells[this.cid];
   }
 
   reachable(cell: Cell) {
@@ -136,19 +150,71 @@ export default class Unit {
     return this.ap > 0;
   }
 
-  hitChance(target: Unit, cell?: Cell, direct = false): number {
+  perpendicularVelocity(target: V2) {
+    if (!this.moving) return 0;
+    let dir = v2.norm(v2.sub(target, this.at));
+    let p = v2.det(dir, this.velocity);
+    return p;
+  }
+
+  velocityAccuracyBonus(target: V2) {
+    return -Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+  }
+
+  velocityDefenceBonus(target: V2) {
+    return Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+  }
+
+  focusAccuracyBonus(target: V2) {
+    if (!this.focused) return 0;
+    let angle = v2.angleBetween(v2.sub(target, this.at), this.focus);
+    let bonus = 1 - (4 * Math.abs(angle)) / Math.PI;
+    if (bonus < 0) bonus /= 2;
+    return Math.round(bonus * v2.length(this.focus));
+  }
+
+  focusDefenceBonus(target: V2) {
+    return this.focusAccuracyBonus(target);
+  }
+
+  hitChance(tcell:Cell, tunit?:Unit, direct = false, bonuses?:{
+    cover?: number;
+    dodge?: number;
+    distance?: number;
+    accuracy?: number;
+    ownVelocity?: number;
+    targetVelocity?: number;
+    ownFocus?: number;
+    targetFocus?: number;
+  }): number {
+    if(!tunit)
+      tunit = tcell.unit;
+    if(tunit == this)
+      return 0;
     let fov = direct ? this.cell.dfov : this.cell.xfov;
-    if (!fov.has((cell || target.cell).cid)) return 0;
-    let cover = this.cover(cell || target.cell);
+    let tat = tcell.at;
+    if (!fov.has(tcell.cid)) return 0;
+    let cover = this.cover(tcell || tunit.cell);
     if (cover == -1) return 0;
-    let accuracy = this.gun.accuracy;
-    let dodge = target.def;
-    let chance = Math.round(
-      accuracy -
-        cover * 25 -
-        dodge -
-        this.gun.accuracyPenalty(this.dist(target))
-    );
+    if(!bonuses)
+      bonuses = {}
+    bonuses.accuracy = this.gun.accuracy;
+    bonuses.cover = -cover * 25;
+    bonuses.dodge = -tunit.def;
+    bonuses.distance = -this.gun.accuracyPenalty(this.dist(tunit));
+    bonuses.ownVelocity = this.velocityAccuracyBonus(tat);
+    bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
+    bonuses.ownFocus = this.focusAccuracyBonus(tat);
+    bonuses.targetFocus = -tunit.focusDefenceBonus(this.at);
+
+    if(bonuses.cover < bonuses.targetVelocity)
+      bonuses.targetVelocity = 0;
+    else
+      bonuses.cover = 0;
+
+    console.log(JSON.stringify(bonuses));
+
+    let chance = Math.round(Object.values(bonuses).reduce((a, b) => a + b));
     return chance;
   }
 
@@ -173,12 +239,12 @@ export default class Unit {
     this.terrain.animate({ char: this });
   }
 
-  async shoot(cell: Cell) {
-    if (!cell) return false;
-    let target = cell.unit;
+  async shoot(tcell: Cell) {
+    if (!tcell) return false;
+    let target = tcell.unit;
     if (!target) return false;
 
-    let chance = this.hitChance(target);
+    let chance = this.hitChance(tcell);
     if (chance == 0) return false;
 
     let success = this.terrain.rni() % 100 < chance;
@@ -186,7 +252,7 @@ export default class Unit {
     this.ap = 0;
     let dmg = 0;
     if (success) {
-      dmg = this.gun.damageRoll(this, target, this.terrain.rnf);
+      dmg = this.gun.damageRoll(this, target.cell, this.terrain.rnf);
     }
 
     await this.animateShoot(target.cid, dmg);
@@ -194,15 +260,48 @@ export default class Unit {
     target.takeDamage(dmg);
     if (target.hp <= 0) this.team.calculate();
 
+    let dir = v2.norm(v2.sub(tcell.at, this.at));
+    this.focusAccuracyBonus(tcell.at)
+    this.focus = v2.scale(dir, Math.max(this.gun.maxFocus, 10 + this.focusAccuracyBonus(tcell.at)));
+    this.velocity = [0, 0];
+
     return true;
   }
 
   teleport(to: Cell) {
-    if (this.cell.cid == to.cid) return;
-    delete this.cell.unit;
-    this.cid = to.cid;
-    this.cell.unit = this;
+    if (this.cell) {
+      if (this.cell == to) return;
+      delete this.cell.unit;
+    }
+
+    to.unit = this;
+    this.cell = to;
+
     this.calculate();
+  }
+
+  calculateReactionFire(path: V2[]) {
+    let enemies = this.team.enemy.units;
+    let rfPoints = [] as { moment: number; enemy: Unit }[];
+    for (let enemy of enemies) {
+      if (enemy.ap == 0) continue;
+      let bestMoment = max(
+        path,
+        step => !step.unit && enemy.averageDamage(step, this, true)
+      );
+      if (bestMoment && bestMoment.val >= 1) {
+        rfPoints.push({ moment: bestMoment.ind, enemy });
+      }
+    }
+
+    rfPoints = rfPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
+
+    return rfPoints;
+  }
+
+  calculateVelocity(path: Cell[]) {
+    let delta = v2.sub(path[path.length - 1].at, path[0].at);
+    return v2.round(v2.norm(delta, this.speed));
   }
 
   async move(to: Cell) {
@@ -210,22 +309,26 @@ export default class Unit {
     this.ap -= this.apCost(to);
 
     let path = this.pathTo(to);
+
+    this.velocity = this.calculateVelocity(path);
+    this.focus = v2.norm(this.velocity, 10)
+
     let enemies = this.team.enemy.units;
-    let owPoints = [] as { moment: number; enemy: Unit }[];
+    let rfPoints = [] as { moment: number; enemy: Unit }[];
     for (let enemy of enemies) {
       if (enemy.ap == 0) continue;
       let bestMoment = max(
         path,
-        step => !step.unit && enemy.averageDamage(this, step, true)
+        step => !step.unit && enemy.averageDamage(step, this, true)
       );
       if (bestMoment && bestMoment.val >= 1) {
-        owPoints.push({ moment: bestMoment.ind, enemy });
+        rfPoints.push({ moment: bestMoment.ind, enemy });
       }
     }
 
-    owPoints = owPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
+    rfPoints = rfPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
 
-    for (let owPoint of owPoints) {
+    for (let owPoint of rfPoints) {
       let place = path[owPoint.moment];
       await this.animateWalk(this.pathTo(place));
       this.teleport(place);
@@ -290,9 +393,9 @@ export default class Unit {
     return this.terrain.cells[bestAt];
   }
 
-  averageDamage(tchar: Unit, cell?: Cell, direct = false) {
-    let hitChance = this.hitChance(tchar, cell, direct);
-    return (hitChance * this.gun.averageDamage(this, tchar, cell)) / 100;
+  averageDamage(tcell: Cell, tunit?:Unit, direct = false) {
+    let hitChance = this.hitChance(tcell, tunit, direct);
+    return (hitChance * this.gun.averageDamage(this,tcell)) / 100;
   }
 
   bestTarget() {
@@ -300,7 +403,7 @@ export default class Unit {
     let bestAt: Cell = null;
     for (let tchar of this.terrain.units) {
       if (tchar.team == this.team || tchar.hp <= 0) continue;
-      let score = this.averageDamage(tchar);
+      let score = this.averageDamage(tchar.cell);
       if (score > bestScore) {
         bestScore = score;
         bestAt = tchar.cell;
@@ -320,15 +423,19 @@ export default class Unit {
     return v2.dist(this.at, other.at);
   }
 
-  info() {
-    return `${this.name.toUpperCase()} <b>${this.hp}HP</b> ${lang[this.name]}`;
-  }
-
   get alive() {
     return this.hp > 0;
   }
 
   friendly(other: Unit) {
     return other && this.team == other.team;
+  }
+
+  get moving() {
+    return v2.length(this.velocity) > 0;
+  }
+
+  get focused() {
+    return v2.length(this.focus) > 0;
   }
 }

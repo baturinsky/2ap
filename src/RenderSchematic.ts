@@ -40,7 +40,7 @@ export default class RenderSchematic {
 
   screenPos = [0, 0] as V2;
 
-  lookingAt:V2;
+  lookingAt: V2;
 
   get canvas() {
     return this.game.canvas;
@@ -78,10 +78,13 @@ export default class RenderSchematic {
   }
 
   update(dTime: number) {
-
-    if(this.lookingAt && v2.dist(this.lookingAt, this.screenPos) > 1){
+    if (this.lookingAt && v2.dist(this.lookingAt, this.screenPos) > 1) {
       let d = v2.dist(this.lookingAt, this.screenPos);
-      this.screenPos = v2.lerp(this.screenPos, this.lookingAt, Math.min(1, dTime*Math.max(d/100, 5)))
+      this.screenPos = v2.lerp(
+        this.screenPos,
+        this.lookingAt,
+        Math.min(1, dTime * Math.max(d / 100, 5))
+      );
     } else {
       delete this.lookingAt;
 
@@ -292,14 +295,21 @@ export default class RenderSchematic {
 
   useDollCache(ctx: Context2d, doll: Doll) {
     let unit = doll.unit;
-    let state = ["cid", "hp", "ap", "kind", "faction"].map(key => unit[key]);
+    let state = ["cid", "hp", "ap", "kind", "faction", "focus", "velocity"].map(
+      key => unit[key]
+    );
     state.push(this.dollTint(doll));
-    let key = state.join(",");
+    let key = JSON.stringify(state);
     if (!(key in this.dollCache))
-      this.dollCache[key] = canvasCache([this.tileSize, this.tileSize], ctx =>
-        this.renderDollBody(ctx, doll, this.dollTint(doll))
+      this.dollCache[key] = canvasCache(
+        [this.tileSize * 2, this.tileSize * 2],
+        ctx => this.renderDollBody(ctx, doll, this.dollTint(doll))
       );
-    ctx.drawImage(this.dollCache[key], 0, 0);
+    ctx.drawImage(
+      this.dollCache[key],
+      -0.5 * this.tileSize,
+      -0.5 * this.tileSize
+    );
   }
 
   dollTint(doll: Doll) {
@@ -327,65 +337,93 @@ export default class RenderSchematic {
     ctx.fillStyle = ["#fff", "#fba", "#cfa", "#ffa", "#ccc"][tint];
     ctx.strokeStyle = unit.strokeColor;
 
+    ctx.scale(this.tileSize, this.tileSize);
+    ctx.translate(0.5, 0.5);
+
     ctx.shadowColor = "#444";
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     ctx.shadowBlur = 4;
     ctx.beginPath();
-    ctx.arc(
-      0.5 * this.tileSize,
-      0.5 * this.tileSize,
-      this.tileSize * 0.4,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(0.5, 0.5, 0.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowColor = `rgba(0,0,0,0)`;
 
-    ctx.lineWidth = 2;
+    /*ctx.lineWidth = 0.05;
+    
     for (let i = 0; i < unit.hp; i++) {
       let angle = Math.PI * (1 - i / (unit.maxHP - 1));
       let v = v2.fromAngle(angle);
       ctx.beginPath();
       ctx.moveTo(
-        (0.5 + v[0] * 0.4) * this.tileSize,
-        (0.5 + v[1] * 0.4) * this.tileSize
+        (0.5 + v[0] * 0.3),
+        (0.5 + v[1] * 0.3)
       );
       ctx.lineTo(
-        (0.5 + v[0] * 0.5) * this.tileSize,
-        (0.5 + v[1] * 0.5) * this.tileSize
+        (0.5 + v[0] * 0.4),
+        (0.5 + v[1] * 0.4)
       );
       ctx.stroke();
-    }
-    ctx.lineWidth = 1;
+    }*/
 
-    ctx.fillStyle = unit.strokeColor;
-    ctx.textAlign = "center";
-    ctx.font = `bold ${this.tileSize / 2}pt Courier`;
-    ctx.fillText(
-      unit.symbol.toUpperCase(),
-      0.5 * this.tileSize,
-      0.66 * this.tileSize
-    );
-    ctx.stroke();
+    ctx.lineWidth = 0.1;
 
-    if (unit.ap > 0) {
+    if (unit.ap > 0) {      
       ctx.fillStyle = doll.unit.strokeColor;
       ctx.beginPath();
-      ctx.moveTo(1, 1);
-      ctx.lineTo(6, 1);
-      ctx.lineTo(1, 6);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(0.2, 0.3);
+      ctx.lineTo(0.3, 0.2);
+      ctx.stroke();
       if (unit.ap > 1) {
         ctx.beginPath();
-        ctx.moveTo(this.tileSize - 1, 1);
-        ctx.lineTo(this.tileSize - 6, 1);
-        ctx.lineTo(+this.tileSize - 1, 6);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(0.8, 0.3);
+        ctx.lineTo(0.7, 0.2);
+        ctx.stroke();
       }
     }
+
+    ctx.beginPath();
+    ctx.fillStyle = unit.strokeColor;
+    ctx.textAlign = "center";
+    ctx.font = `bold ${0.5}pt Courier`;
+    ctx.fillText(unit.symbol.toUpperCase(), 0.5, 0.66);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.lineWidth = 0.05;
+    ctx.transform(-1, 0, 0, 1, 1, 0);
+    ctx.setLineDash([6 / unit.maxHP - 0.05, 0.05]);
+    ctx.beginPath();
+    ctx.arc(0.5, 0.5, 0.35, 0, (Math.PI * unit.hp) / unit.maxHP);
+    ctx.stroke();
+    ctx.restore();
+
+    if(unit.moving){
+      ctx.save()
+      ctx.translate(0.5, 0.5)
+      let angle = Math.atan2(unit.velocity[1], unit.velocity[0]);
+      ctx.rotate(angle)
+      ctx.lineWidth = 0.01 + 0.01 * v2.length(unit.velocity);
+      ctx.moveTo(-0.6, -0.15);
+      ctx.lineTo(-0.45, 0);
+      ctx.lineTo(-0.6, 0.15);
+      ctx.stroke();          
+      ctx.restore()
+    }
+
+    if(unit.focused){
+      ctx.save()
+      ctx.translate(0.5, 0.5)
+      let angle = Math.atan2(unit.focus[1], unit.focus[0]);
+      ctx.rotate(angle)
+      ctx.lineWidth = 0.003 * v2.length(unit.focus);
+      ctx.moveTo(0.45, -0.15);
+      ctx.lineTo(0.6, 0);
+      ctx.lineTo(0.45, 0.15);
+      ctx.stroke();          
+      ctx.restore()
+    }
+
   }
 
   cidToPoint(ind: number): V2 {
@@ -497,13 +535,17 @@ export default class RenderSchematic {
   }
 
   insideScreen(at: V2) {
-    at = v2.sum(at, this.screenPos)
+    at = v2.sum(at, this.screenPos);
     return (
       at[0] >= insideBorder &&
       at[1] >= insideBorder &&
       at[0] <= this.width - insideBorder &&
       at[1] <= this.height - insideBorder
     );
+  }
+
+  lookAtCid(cid: number) {
+    this.lookAt(this.cidToCenterPoint(cid));
   }
 
   lookAt(at: V2) {

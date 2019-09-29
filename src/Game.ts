@@ -1,11 +1,12 @@
 import * as v2 from "./v2";
-import Terrain from "./Terrain";
 import { V2 } from "./v2";
+import Terrain from "./Terrain";
 import Unit from "./Unit";
 import RenderSchematic from "./RenderSchematic";
 import Team from "./Team";
 import Cell from "./Cell";
-import { defaultCampaign, StageConf, CampaignConf } from "./Campaigns";
+import { campaigns as coreCampaigns, StageConf, CampaignConf } from "./Campaigns";
+import { parseWithNewLines } from "./Util";
 
 export default class Game {
   ctx: CanvasRenderingContext2D;
@@ -16,15 +17,14 @@ export default class Game {
   //eye: Char;
   lastSelectedFaction: Team;
   chosen: Unit;
+  lastChosen: Unit;
   hovered: Cell;
 
-  aiTurn: boolean;
+  static readonly PAI = 2;
+  static readonly PP = 0;
+  static readonly AIAI = 3;
 
-  static readonly PAI = 0;
-  static readonly PP = 1;
-  static readonly AIAI = 2;
-
-  mode = Game.PAI;
+  aiSides = Game.PAI;
 
   renderer: RenderSchematic;
 
@@ -34,8 +34,35 @@ export default class Game {
   stage: StageConf;
   customCampaign: boolean;
 
-  campaignByName(name: string) {
-    return defaultCampaign;
+  static readonly savePrefix = "2aps:";
+  static readonly campaignPrefix = "2apc:";
+  static readonly savePrefixLength = Game.savePrefix.length;
+  static readonly timeStampLength = 13;
+
+  static loadCampaign(id: string): CampaignConf {
+    return parseWithNewLines(localStorage.getItem(Game.campaignPrefix + id));
+  }
+
+  static campaignById(id?: string) {
+    return (
+      coreCampaigns.find(c => c.name == id || c.name + " " + c.version == id) ||
+      Game.loadCampaign(id) ||
+      coreCampaigns[0]
+    );
+  }
+
+  static savedCampaignIds() {
+    return Object.keys(localStorage)
+      .filter(n => n.substr(0, Game.savePrefixLength) == Game.campaignPrefix)
+      .map(n => n.substr(Game.savePrefixLength))
+      .sort()
+      .reverse();
+  }
+
+  static allCampaignIds() {
+    return coreCampaigns
+      .map(c => c.name + " " + c.version)
+      .concat(Game.savedCampaignIds());
   }
 
   stageByName(name: string) {
@@ -44,15 +71,7 @@ export default class Game {
     );
   }
 
-  static parseWithNewLines(json: string) {
-    let split = json.split('"');
-    for (let i = 1; i < split.length; i += 2) {
-      split[i] = split[i].replace(/\n/g, "\\n");
-    }
-    return JSON.parse(split.join('"'));
-  }
-
-  init(saveString?: string, useState:boolean = true) {
+  init(saveString?: string, useState: boolean = true) {
     delete this.chosen;
     delete this.hovered;
     delete this.lastSelectedFaction;
@@ -60,28 +79,47 @@ export default class Game {
     let save;
 
     if (saveString) {
-      save = Game.parseWithNewLines(saveString);
+      save = parseWithNewLines(saveString);
 
       if (save.campaign) {
-        this.campaign = this.campaignByName(save.campaign);
+        this.campaign = Game.campaignById(save.campaign);
       } else {
         this.campaign = save;
         this.customCampaign = true;
       }
     }
 
-    this.campaign = this.campaign || defaultCampaign;
+    if (!this.campaign) this.campaign = Game.campaignById();
+    this.init2(
+      this.campaign,
+      this.stageByName(save && save.stage),
+      save && useState ? save.state : null
+    );
+  }
 
-    this.stage = this.stageByName(save && save.stage);
+  makeNotCustom() {
+    this.customCampaign = false;
+  }
+
+  init2(campaign: CampaignConf, stage: StageConf, state?: StageConf) {
+    this.campaign = campaign;
+
+    this.stage = stage;
 
     this.terrain = new Terrain(
       this.campaign,
       this.stage,
-      save && useState? save.state : null,
+      state || null,
       (animation: any) => this.renderer.draw(animation)
     );
 
     this.renderer.synch();
+
+    this.updateUI({ activeTeam: this.activeTeam });
+  }
+
+  initStage(stageInd: number) {
+    this.init2(this.campaign, this.campaign.stages[stageInd]);
   }
 
   serialize(
@@ -141,24 +179,27 @@ export default class Game {
     this.updateUI({ tooltipAt, tooltipText });
   }
 
-  updateInfo(text?: string) {
-    this.updateUI({
-      info:
-        text ||
-        (this.terrain.victor
-          ? `<H3 style="color:white; background:${this.terrain.victor.color}">${this.terrain.victor.name} side victorious</H3>`
-          : "")
-    });
-  }
-
   click(x: number, y: number) {
     let cell = this.renderer.cellAtScreenPos(x, y);
     this.clickCell(cell);
     this.renderer.resetCanvasCache();
   }
 
+  isAi(team: Team) {
+    return this.aiSides & (1 << team.faction);
+  }
+
   canPlayAs(unit: Unit) {
-    return unit.blue || this.mode != Game.PAI;
+    return !this.isAi(unit.team);
+  }
+
+  choose(c: Unit) {
+    this.chosen = c;
+    if (!c) return;
+    this.lastChosen = this.chosen;
+    this.chosen.calculate();
+    this.renderer.lookAtCid(this.chosen.cid);
+    this.renderer.resetCanvasCache();
   }
 
   clickCell(cell: Cell) {
@@ -170,8 +211,7 @@ export default class Game {
         this.chosen.team == cell.unit.team &&
         this.canPlayAs(cell.unit)
       ) {
-        this.chosen = cell.unit;
-        this.chosen.calculate();
+        this.choose(cell.unit);
         return;
       }
 
@@ -183,7 +223,7 @@ export default class Game {
       if (this.chosen == cell.unit) {
         this.cancel();
       } else {
-        if (this.canPlayAs(cell.unit)) this.chosen = cell.unit;
+        if (this.canPlayAs(cell.unit)) this.choose(cell.unit);
       }
 
       if (this.chosen) {
@@ -233,8 +273,8 @@ export default class Game {
       cursor = "crosshair";
       this.updateTooltip(
         this.renderer.cidToCenterScreen(cell.cid),
-        `${this.chosen.hitChance(cell.unit)}% ${this.chosen.gun
-          .averageDamage(this.chosen, cell.unit)
+        `${this.chosen.hitChance(cell)}% ${this.chosen.gun
+          .averageDamage(this.chosen, cell)
           .toFixed(1)}`
       );
     } else {
@@ -242,42 +282,66 @@ export default class Game {
     }
     document.body.style.cursor = cursor;
 
-    if (cell.unit) {
-      this.updateInfo(cell.unit.info());
-    } else {
-      this.updateInfo();
-    }
+    this.updateUI({chosen:this.chosen, unitInfo:cell.unit});
 
     if (!this.renderer.busy) this.renderer.resetCanvasCache();
   }
 
-  async endTurn() {
+  get blue() {
+    return this.terrain.teams[Team.BLUE];
+  }
+
+  get red() {
+    return this.terrain.teams[Team.RED];
+  }
+
+  get activeTeam() {
+    return this.terrain.activeTeam;
+  }
+
+  async endTurn(aiSides: number) {
+    this.aiSides = aiSides;
+    if (this.isAi(this.activeTeam)) {
+      await this.endSideTurn();
+    } else {
+      do {
+        await this.endSideTurn();
+      } while (this.isAi(this.activeTeam));
+    }
+  }
+
+  async endSideTurn() {
     delete this.chosen;
 
-    this.aiTurn = true;
-    this.updateUI({ aiMoving: true });
+    let team = this.activeTeam;
 
-    if (this.mode == Game.AIAI) await this.terrain.teams[Team.BLUE].think();
-    this.terrain.teams[Team.RED].beginTurn();
-    if (this.mode != Game.PP) await this.terrain.teams[Team.RED].think();
-    this.terrain.teams[Team.BLUE].beginTurn();
+    if (this.isAi(team)) await team.think();
+
+    this.terrain.endSideTurn();
+
     this.renderer.resetCanvasCache();
 
-    this.aiTurn = false;
-    this.updateUI({ aiMoving: false });
+    this.updateUI({ activeTeam: this.activeTeam });
   }
 
-  toggleMode() {
-    this.mode = (this.mode + 1) % 3;
-    return ["[P+AI] 2P 2AI", "P+AI [2P] 2AI", "P+AI 2P [2AI]"][this.mode];
-  }
-
-  setMode(m: number) {
-    this.mode = m;
+  setAiSides(m: number) {
+    this.aiSides = m;
   }
 
   get hoveredChar() {
     if (this.hovered) return this.hovered.unit;
+  }
+
+  chooseNext(delta = 1) {
+    if (!this.chosen) {
+      if (this.lastChosen) this.choose(this.lastChosen);
+      else this.choose(this.terrain.we.units[0]);
+    } else {
+      let team = this.chosen.team.units;
+      let next =
+        team[(team.indexOf(this.chosen) + team.length + delta) % team.length];
+      this.choose(next);
+    }
   }
 }
 

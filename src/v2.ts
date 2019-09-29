@@ -4,6 +4,10 @@ export function round(v: V2): V2 {
   return [Math.round(v[0]), Math.round(v[1])];
 }
 
+export function pretty(v: V2): string {
+  return v.join(",");
+}
+
 export function sum(a: V2, b: V2, m = 1): V2 {
   return [a[0] + b[0] * m, a[1] + b[1] * m];
 }
@@ -38,6 +42,10 @@ export function dot(a: V2, b: V2): number {
   return a[0] * b[0] + a[1] * b[1];
 }
 
+export function det(a: V2, b: V2): number {
+  return a[0] * b[1] - a[1] * b[0];
+}
+
 export function rot(v: V2): V2 {
   return [v[1], -v[0]];
 }
@@ -60,6 +68,10 @@ export function lerp(start: V2, end: V2, amt: number): V2 {
     start[0] * (1 - amt) + amt * end[0],
     start[1] * (1 - amt) + amt * end[1]
   ];
+}
+
+export function angleBetween(a:V2, b:V2){
+  return Math.atan2(det(a,b), dot(a,b))
 }
 
 export function fromAngle(a: number): V2 {

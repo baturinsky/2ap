@@ -1,6 +1,5 @@
-Todo 
+*Todo*
 
-Saving
 Status effects
 Hunker down
 Hidden Movement
@@ -8,8 +7,9 @@ Targeted abilities (heal)
 AOE effects (explosion)
 Tile effects (smoke)
 
-Done
+*Done*
 
+Saving
 Water
 Disjoint UI from game model
 Optimise Blueprint graphics mode
@@ -19,9 +19,9 @@ Main menu
 Full Screen and scrolling
 Support for custom units, custom weapons, multiple stages in editor
 
--
 
-Ideas
+
+*Ideas*
 
 Moving target: bonus to def proportional to move if attacked while moving, or ended turn with movement or melee.
 Shock: malus to def and acc proportional to HP loss, doubled for hp loss in previous turn. Some attacks give extra shock.
@@ -32,3 +32,61 @@ Stress/Alert: units in combat (alerted) accumulated stress for each action depen
 Units not in combat slowly lose stress, but have reduced vision and can only make 1 move action per turn.
 Smoke: reduces acc for all shots through, in, or from it. Reduces visibility (?). Destroying any obstacle creates a small smoke cloud.
 Cover fire: each one making any action in target area has a chance to be shot at reduced acc. Reduces def.
+
+*Key concept*
+
+~Stress and exhaustion~
+
+Stress (abbreviated as SP - Stress Points) is a variable unit stat similar to HP or AP. 
+Accumulates fast when doing any activity, or when reacting to something (such as being shot).
+At the end of side's turn, is halved, but percentage of it (~5%) is converted to Exhaustion.
+
+Each points of Stress or Exhaustion gives 1% penalty to Acc and Def.
+
+Stress causes:
+
+Shoot: 10SP
+Half-move: 10SP
+Being shot at: up to 5SP (may be lower depending on hit chance and damage), 
+Taking damage: up to 10SP depending on damage
+Taking action when at 0AP: SP is DOUBLED after action is finished. 
+Consequentive actions when at 0AP also cost 5,10,15etc SP, applied after doubling.
+Dodging fatal shot: if below 50SP and above 1HP, at the cost of 50SP unit can automatically make fatal shot a graze, remaining at 1HP.
+
+Stress recovery:
+
+Successful attack: up to 5SP for one victim.
+KO enemy: 5SP in addition to previous bonus, once per victim. 
+Also, recover 1 Exhaustion Point to entire attacker's side, and adds 1 EP to entire victim's side.
+
+~Focus~
+
+After attacking or doing other directional action (such as moving) unit gains 10 focus, stacking up to 30, in that direction.
+Special action "Focus" gives 30 Focus in direction of choice straight away.
+Special action "Look around" removes Focus.
+Focus gives bonus to Acc against and Def from enemies in that direction. 
+Bonus is reduced gradually proportionally to angle between Focus direction and vector to enemy, becoming a penalty after certain angle (60%?).
+
+~Velocity~
+
+When moving, average step direction times speed stat becomes unit's velocity, effective when movement starts.
+Non-movement actions reduce velocity by certain percentage. 
+For example, shooting pistol remove 25% of velocity, 50% for shotgun, 75% for full-sized rifle.
+At the beginning of side's turn velocity is cut by 50%.
+
+Velocity gives penalty to Acc both fo moving unit and for enemies shooting at it. 
+Penalty depends heavily on angle between velocity and vector to enemy.
+Unit gets low penalty for enemies ahead, moderate at the sides and heavy for units behind.
+Enemies get low penalty against unit moving to or from them, and moderate for unit moving sideways.
+
+Penalty also depends on weapon: heavy weapon and slow projectiles get big penalty, 
+light weaapons (such as pistols and shotguns) and melee has low penalty.
+
+Certain melee attack can get damage bonuses and penalties depending on attack vector and velocity.
+
+Velocity sets Focus of 10 in it's direction.
+
+~Reaction Fire~
+
+Reaction fire costs 1AP and only happens when expected damage (weapon damage with all bonuses/penalties x hit chance) is 1HP or more.
+When it's done in reaction to movement, it happens at the moment when expected damage is maximal (for example, when target is closest).

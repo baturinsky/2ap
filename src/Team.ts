@@ -6,9 +6,9 @@ export default class Team {
   distance: number[];
   fov = new Set<number>();
 
-  static readonly RED = 0;
-  static readonly BLUE = 1;
-
+  static readonly BLUE = 0;
+  static readonly RED = 1;
+  
   constructor(public terrain: Terrain, public faction: number) {}
 
   serialize() {
@@ -64,11 +64,15 @@ export default class Team {
     this.terrain.aiTurn = false;
   }
 
+  endTurn(){
+
+  }
+
   beginTurn() {
     for (let c of this.units) {
       c.ap = 2;
     }
-    this.terrain.activeTeam = this.faction;
+    this.terrain.activeTeam = this;
   }
 
   get units() {

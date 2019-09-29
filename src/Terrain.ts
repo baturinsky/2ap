@@ -5,7 +5,7 @@ import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
 import Team from "./Team";
 import Gun from "./Gun";
-import { StageConf, CampaignConf } from "./Campaigns";
+import { StageConf, CampaignConf, StateConf } from "./Campaigns";
 
 type V2 = [number, number];
 const sightRange = 20;
@@ -38,14 +38,14 @@ export default class Terrain {
 
   rni = random(1);
 
-  activeTeam = 0;
+  activeTeam:Team;
 
   rnf = () => (this.rni() % 1e9) / 1e9;
 
   serialize() {
     return {
       teams: this.teams.map(t => t.serialize()),
-      activeTeam: this.activeTeam
+      activeTeam: this.activeTeam.faction
     };
   }
 
@@ -64,14 +64,14 @@ export default class Terrain {
     this.units = [];
     this.teams = [];
 
+    delete this.victor;
+
     for (let i = 0; i < 2; i++) {
       let team = new Team(this, i);
       this.teams[i] = team;
     }
 
     for (let y = 0; y < this.h; y++) {
-      delete this.victor;
-
       let line = lines[y];
       for (let x = 0; x < this.w; x++) {
         let cid = x + y * this.w;
@@ -79,9 +79,10 @@ export default class Terrain {
         let cell = new Cell(
           this,
           cid,
-          ["+", "#"].indexOf(symbol) + 1,
-          Unit.from(this, { symbol, cid: this.cid(x, y) })
+          ["+", "#"].indexOf(symbol) + 1
         );
+        if(this.campaign.units[symbol.toLowerCase()])
+          new Unit(cell, { symbol, cid })
         if (symbol == "*") cell.goody = 1;
         if (symbol == "~") cell.hole = true;
         this.cells[cid] = cell;
@@ -104,6 +105,10 @@ export default class Terrain {
       if (!c.obstacle) c.calculatePovAnCover();
     }
 
+    console.log(this.w)
+    console.log(this.h)
+    console.time("FOV")
+
     for (let c of this.cells) {
       if (!c.obstacle) {
         c.calculatePovAnCover();
@@ -111,12 +116,17 @@ export default class Terrain {
       }
     }
 
+    console.timeEnd("FOV")
+
     for (let c of this.cells) {
       if (!c.obstacle) {
         c.calculateXFov();
         c.calculateDFov();
       }
     }
+
+
+    this.activeTeam = this.teams[0]
 
     console.log(this);
   }
@@ -141,7 +151,7 @@ export default class Terrain {
     if (state) this.loadState(state);
   }
 
-  loadState(state: any) {
+  loadState(state: StateConf) {
     if(!state || !state.teams)
       return;
 
@@ -150,12 +160,14 @@ export default class Terrain {
 
     this.teams = state.teams.map((t, i) => {
       let team = new Team(this, i);
-      for (let u of t.units) {        
-        let unit = Unit.from(this, u);
+      for (let u of t.units) {
+        let unit = new Unit(this.cells[u.cid], u);
         unit.team = team;
       }
       return team;
     });
+
+    this.activeTeam = this.teams[state.activeTeam]
   }
 
   calcDists(fromi: number) {
@@ -291,5 +303,13 @@ export default class Terrain {
 
   get we() {
     return this.teams[Team.BLUE];
+  }
+
+  endSideTurn(){
+    this.activeTeam.endTurn();
+
+    this.teams[
+      (this.activeTeam.faction + 1) % this.teams.length
+    ].beginTurn();
   }
 }
