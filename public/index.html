@@ -83,11 +83,26 @@
 
       .bottom-buttons {
         position: fixed;
-        top: calc(100% - 50px);
-        width: calc(100% - 15px);
+        bottom: 5px;
+        width: calc(100% - 10px);
         justify-content: space-between;
         pointer-events: none;
         z-index: 5;
+      }
+
+      .ability-buttons {
+        position: fixed;
+        bottom: 5px;
+        width: calc(100% - 430px);
+        left: 215px;
+        justify-content: center;
+        pointer-events: none;
+        flex-wrap: wrap-reverse;
+        z-index: 5;
+      }
+
+      .ability-buttons > button {
+        width:40px;
       }
 
       .top-buttons {
@@ -121,7 +136,7 @@
         width: 100px;
       }
 
-      .long{
+      .long {
         width: 400px;
       }
 
@@ -140,7 +155,7 @@
         height: 680px;
       }
 
-      #unitInfo{
+      #unitInfo {
         background: white;
         box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.7);
         position: fixed;
@@ -150,7 +165,7 @@
         width: 400px;
       }
 
-      #editor{
+      #editor {
         display: flex;
         flex-direction: column;
       }
@@ -173,42 +188,42 @@
         justify-content: center;
         align-items: center;
         text-align: center;
-        padding-top:50px;
+        padding-top: 50px;
       }
 
-      .save{
+      .save {
         text-align: right;
       }
 
-      .save-name{
-        width:600px;
+      .save-name {
+        width: 600px;
         border: none;
         border-bottom: solid 1px gray;
-        margin:10px;
+        margin: 10px;
       }
 
-      .save-name[disabled]{
+      .save-name[disabled] {
         background: none;
         border: none;
       }
 
-      .save-row{
+      .save-row {
         vertical-align: bottom;
       }
 
-      .side0{
-        color:blue;
+      .side0 {
+        color: blue;
       }
 
-      .side1{
-        color:red;
+      .side1 {
+        color: red;
       }
 
-      .to-left{
+      .to-left {
         text-align: left;
       }
-      
-      .nobr{
+
+      .nobr {
         white-space: nowrap;
         hyphens: none;
       }

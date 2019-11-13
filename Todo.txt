@@ -1,5 +1,8 @@
 *Todo*
 
+Fast Forward
+Save goodies too
+Abilities/items ui
 Status effects
 Hunker down
 Hidden Movement

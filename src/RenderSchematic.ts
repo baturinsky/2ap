@@ -78,12 +78,12 @@ export default class RenderSchematic {
   }
 
   update(dTime: number) {
-    if (this.lookingAt && v2.dist(this.lookingAt, this.screenPos) > 1) {
-      let d = v2.dist(this.lookingAt, this.screenPos);
+    let d = this.lookingAt ? v2.dist(this.lookingAt, this.screenPos) : 0;
+    if (this.lookingAt && d > 20) {
       this.screenPos = v2.lerp(
         this.screenPos,
         this.lookingAt,
-        Math.min(1, dTime * Math.max(d / 100, 5))
+        Math.min(1, dTime * Math.max(d / 50, 10) * this.animSpeed)
       );
     } else {
       delete this.lookingAt;
@@ -210,7 +210,7 @@ export default class RenderSchematic {
 
     if (sprite) ctx.drawImage(sprite, at[0], at[1]);
 
-    if (cell.goody) {
+    if (cell.items.length > 0) {
       ctx.translate(...at);
       ctx.fillStyle = "#080";
       ctx.fillRect(this.tileSize * 0.35, 0, this.tileSize * 0.3, this.tileSize);
@@ -368,17 +368,15 @@ export default class RenderSchematic {
 
     ctx.lineWidth = 0.1;
 
-    if (unit.ap > 0) {      
+    if (unit.ap > 0) {
       ctx.fillStyle = doll.unit.strokeColor;
       ctx.beginPath();
-      ctx.moveTo(0.2, 0.3);
-      ctx.lineTo(0.3, 0.2);
-      ctx.stroke();
+      ctx.arc(0.2, 0.4, 0.07, 0, Math.PI * 2);
+      ctx.fill();
       if (unit.ap > 1) {
         ctx.beginPath();
-        ctx.moveTo(0.8, 0.3);
-        ctx.lineTo(0.7, 0.2);
-        ctx.stroke();
+        ctx.arc(0.8, 0.4, 0.07, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -389,6 +387,34 @@ export default class RenderSchematic {
     ctx.fillText(unit.symbol.toUpperCase(), 0.5, 0.66);
     ctx.stroke();
 
+    if (unit.focused) {
+      ctx.save();
+      ctx.translate(0.5, 0.5);
+      let angle = Math.atan2(unit.focus[1], unit.focus[0]);
+      ctx.rotate(angle);
+      ctx.lineWidth = 0.003 * v2.length(unit.focus);
+      ctx.beginPath();
+      ctx.moveTo(0.45, -0.15);
+      ctx.lineTo(0.6, 0);
+      ctx.lineTo(0.45, 0.15);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (unit.moving) {
+      ctx.save();
+      ctx.translate(0.5, 0.5);
+      let angle = Math.atan2(unit.velocity[1], unit.velocity[0]);
+      ctx.rotate(angle);
+      ctx.lineWidth = 0.01 + 0.01 * v2.length(unit.velocity);
+      ctx.beginPath();
+      ctx.moveTo(-0.6, -0.15);
+      ctx.lineTo(-0.45, 0);
+      ctx.lineTo(-0.6, 0.15);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.lineWidth = 0.05;
     ctx.transform(-1, 0, 0, 1, 1, 0);
@@ -397,33 +423,6 @@ export default class RenderSchematic {
     ctx.arc(0.5, 0.5, 0.35, 0, (Math.PI * unit.hp) / unit.maxHP);
     ctx.stroke();
     ctx.restore();
-
-    if(unit.moving){
-      ctx.save()
-      ctx.translate(0.5, 0.5)
-      let angle = Math.atan2(unit.velocity[1], unit.velocity[0]);
-      ctx.rotate(angle)
-      ctx.lineWidth = 0.01 + 0.01 * v2.length(unit.velocity);
-      ctx.moveTo(-0.6, -0.15);
-      ctx.lineTo(-0.45, 0);
-      ctx.lineTo(-0.6, 0.15);
-      ctx.stroke();          
-      ctx.restore()
-    }
-
-    if(unit.focused){
-      ctx.save()
-      ctx.translate(0.5, 0.5)
-      let angle = Math.atan2(unit.focus[1], unit.focus[0]);
-      ctx.rotate(angle)
-      ctx.lineWidth = 0.003 * v2.length(unit.focus);
-      ctx.moveTo(0.45, -0.15);
-      ctx.lineTo(0.6, 0);
-      ctx.lineTo(0.45, 0.15);
-      ctx.stroke();          
-      ctx.restore()
-    }
-
   }
 
   cidToPoint(ind: number): V2 {
@@ -451,8 +450,9 @@ export default class RenderSchematic {
     ];
   }
 
-  get animationSpeed() {
-    return this.terrain.aiTurn ? 0.5 : 0.5;
+  get animSpeed() {
+    return 2;
+    //return this.terrain.aiTurn ? 0.5 : 0.5;
   }
 
   updateCanvasCache() {
@@ -550,8 +550,11 @@ export default class RenderSchematic {
 
   lookAt(at: V2) {
     //console.log(at);
-    if (this.insideScreen(at)) return;
-    this.lookingAt = [-at[0] + this.width / 2, -at[1] + this.height / 2];
+    let newLookingA: V2 = [-at[0] + this.width / 2, -at[1] + this.height / 2];
+    if (v2.dist(this.screenPos, newLookingA) <= 20) {
+      this.screenPos = newLookingA;
+    }
+    if (!this.insideScreen(at)) this.lookingAt = newLookingA;
   }
 
   shoot(from: number, to: number, dmg: number) {
@@ -596,7 +599,7 @@ export default class RenderSchematic {
             dTime *
             Math.min(
               10,
-              (1000 / v2.dist(points[0], shootPoint)) * this.animationSpeed
+              (1000 / v2.dist(points[0], shootPoint)) * this.animSpeed
             );
         } else {
           let peek = (time < 1 ? time : 3 - time) * 0.6;
@@ -608,7 +611,7 @@ export default class RenderSchematic {
               peek
             );
           }
-          time += dTime * this.animationSpeed * 10;
+          time += dTime * this.animSpeed * 10;
         }
 
         if (time > 3) {
@@ -631,7 +634,7 @@ export default class RenderSchematic {
     let time = 0;
     this.animQueue.push({
       update: dTime => {
-        time += dTime * 15 * this.animationSpeed;
+        time += dTime * 15 * this.animSpeed;
 
         if (!path[Math.floor(time) + 1]) {
           doll.at = path[path.length - 1];

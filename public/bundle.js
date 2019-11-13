@@ -1,1 +1,3226 @@
-var app=function(t){"use strict";function e(t,e,i,s){var a,n=arguments.length,r=n<3?e:null===s?s=Object.getOwnPropertyDescriptor(e,i):s;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)r=Reflect.decorate(t,e,i,s);else for(var o=t.length-1;o>=0;o--)(a=t[o])&&(r=(n<3?a(r):n>3?a(e,i,r):a(e,i))||r);return n>3&&r&&Object.defineProperty(e,i,r),r}function i(t,e,i,s){return new(i||(i=Promise))(function(a,n){function r(t){try{l(s.next(t))}catch(t){n(t)}}function o(t){try{l(s.throw(t))}catch(t){n(t)}}function l(t){t.done?a(t.value):new i(function(e){e(t.value)}).then(r,o)}l((s=s.apply(t,e||[])).next())})}function s(t,e){let i=function(t,e){let i=Number.MAX_VALUE,s=-1;for(let a=0;a<t.length;a++){let n=e(t[a]);i>n&&(i=n,s=a)}if(s>=0)return{ind:s,item:t[s],val:i}}(t,t=>-e(t));if(i)return i.val=-i.val,i}function a(t,e){const i=document.createElement("canvas");return i.width=t,i.height=e,i}function n(t,e){const i=a(...t),s=i.getContext("2d");return s.lineWidth=1,s.strokeStyle="#000",e(s),i}function r(t,e){return Math.floor(t/e)}function o(t,e,i){return{get(){const t=i.value.bind(this);return Object.defineProperty(this,e,{value:t}),t}}}function l(t){if(!t)return null;let e=t.split('"');for(let t=1;t<e.length;t+=2)e[t]=e[t].replace(/\n/g,"\\n");return JSON.parse(e.join('"'))}function h(t,e,i=1){return[t[0]+e[0]*i,t[1]+e[1]*i]}function c(t,e){return[t[0]-e[0],t[1]-e[1]]}function u(t){return Math.sqrt(t[0]*t[0]+t[1]*t[1])}function d(t,e=1){let i=u(t)||1;return[t[0]/i*e,t[1]/i*e]}function m(t,e){return u([t[0]-e[0],t[1]-e[1]])}function p(t,e){return t[0]*e[0]+t[1]*e[1]}function g(t,e){return t[0]*e[1]-t[1]*e[0]}function f(t,e){return[t[0]*e,t[1]*e]}function v(t,e,i){return[t[0]*(1-i)+i*e[0],t[1]*(1-i)+i*e[1]]}function y(t,e,i,s){var a=function(n,r,o,l){if(!(r>=o)){for(var h=Math.round((n-.5)*r),c=Math.ceil((n+.5)*o-.5),u=h;u<=c;u++){var d=t+l.xx*u+l.xy*n,m=e+l.yx*u+l.yy*n;if(i(d,m))u>=n*r&&u<=n*o&&s(d,m);else if(u>=(n-.5)*r&&u-.5<=n*o&&s(d,m),a(n+1,r,(u-.5)/n,l),(r=(u+.5)/n)>=o)return}a(n+1,r,o,l)}},n=[{xx:1,xy:0,yx:0,yy:1},{xx:1,xy:0,yx:0,yy:-1},{xx:-1,xy:0,yx:0,yy:1},{xx:-1,xy:0,yx:0,yy:-1},{xx:0,xy:1,yx:1,yy:0},{xx:0,xy:1,yx:-1,yy:0},{xx:0,xy:-1,yx:1,yy:0},{xx:0,xy:-1,yx:-1,yy:0}];s(t,e);for(var r=0;r<8;r++)a(1,0,1,n[r])}class S{constructor(t,e,i,s){this.terrain=t,this.cid=e,this.obstacle=i,this.unit=s,this.rfov=new Set,this.xfov=new Set,this.dfov=new Set,this.povs=[],this.peeked=[]}calculatePovAnCover(){this.obstacle||(this.cover=this.terrain.obstacles(this.cid),this.calculatePovs())}calculateFov(){if(this.opaque)return;let t=this.terrain,[e,i]=this.at,s=new Set;y(e,i,(e,i)=>!t.cellAt(e,i).opaque,(e,i)=>{s.add(t.cid(e,i))}),this.rfov=s}calculateXFov(){let t=new Set;for(let e of this.povs)for(let i of e.rfov){let e=this.terrain.cells[i];for(let i of e.peeked)t.add(i.cid)}this.xfov=t}calculateDFov(){let t=new Set;for(let e of this.povs)for(let i of e.rfov)t.add(i);this.dfov=t}get at(){return this.terrain.fromCid(this.cid)}dist(t){return m(this.at,t.at)}seal(){this.obstacle=2,delete this.unit,this.goody=0}get opaque(){return 2==this.obstacle}get passable(){return this.obstacle<2&&!this.hole}get standable(){return 0==this.obstacle&&!this.hole&&!this.unit}calculatePovs(){this.povs=[];let t=this.terrain,e=this.cid;this.povs.push(this);for(let i=0;i<8;i+=2){let s=e+t.dir8Deltas[i];if(!t.cells[s].obstacle)continue;let a=[e+t.dir8Deltas[(i+6)%8],e+t.dir8Deltas[(i+7)%8]],n=[e+t.dir8Deltas[(i+2)%8],e+t.dir8Deltas[(i+1)%8]];for(let e of[a,n]){t.cells[e[0]].standable&&t.cells[e[1]].obstacle<=1&&this.povs.push(t.cells[e[0]])}}for(let t of this.povs)t.peeked.push(this)}}class b{constructor(t,e){this.terrain=t,this.faction=e,this.fov=new Set}serialize(){return{units:this.units.map(t=>t.serialize())}}calculate(){this.strength=[],this.weakness=[],this.distance=[];let t=this.terrain;this.fov.clear();for(let t of this.units)for(let e of t.cell.xfov)this.fov.add(e);let e=this.terrain.teams[1-this.faction];for(let i of this.fov){let s=this.terrain.cells[i];for(let a of e.units){let e=a.cell,n=(4-t.cover(s,e))%5;this.strength[i]>n||(this.strength[i]=n);let r=(4-t.cover(e,s))%5;if(this.weakness[i]>r||(this.weakness[i]=r),n>0||r>0){let t=s.dist(e);this.distance[i]<=t||(this.distance[i]=t)}}}}think(){return i(this,void 0,void 0,function*(){this.terrain.aiTurn=!0,this.calculate();for(let t of this.terrain.units)t.team==this&&t.alive&&(yield t.think());this.terrain.aiTurn=!1})}endTurn(){}beginTurn(){for(let t of this.units)t.ap=2;this.terrain.activeTeam=this}get units(){return this.terrain.units.filter(t=>t.team==this)}get enemy(){return this.terrain.teams[1-this.faction]}get name(){return["RED","BLUE"][this.faction]}get color(){return["RED","BLUE"][this.faction]}}b.BLUE=0,b.RED=1;class C{constructor(t,e){this.cell=t,this.speed=5,this.maxHP=10,this.hp=this.maxHP,this.ap=2,this.exhaustion=0,this.stress=0,this.focus=[0,0],this.velocity=[0,0],this.armor=0,this.sight=20,this.def=0,this.aggression=0,this.name="dude",this.symbol="d",this.symbol=e.symbol.toLowerCase(),t.unit=this;let i=t.terrain;this.terrain.units.push(this);let s=i.campaign.units[this.symbol];Object.assign(this,s),this.hp=this.maxHP,console.assert(s),this.team=i.teams[e.symbol.toUpperCase()==e.symbol?b.BLUE:b.RED];for(let t of C.saveFields)t in e&&(this[t]=e[t]);this.gun=this.terrain.campaign.guns[s.gun]}get terrain(){return this.cell.terrain}get cid(){return this.cell.cid}serialize(){return{symbol:this.symbol,hp:this.hp,ap:this.ap,cid:this.cid,exhaustion:this.exhaustion,stress:this.stress,focus:this.focus,velocity:this.velocity}}get blue(){return this.team==this.terrain.we}pathTo(t){let e=t.cid,i=[e];for(;!((e=this.dists[e][1])<0);)i.push(e);return i.reverse().map(t=>this.terrain.cells[t])}get strokeColor(){return this.blue?"#00a":"#a00"}get x(){return this.cid%this.terrain.w}get y(){return r(this.cid,this.terrain.w)}reachable(t){return this.apCost(t)<=this.ap}calculateDists(){this.dists=this.terrain.calcDists(this.cid)}calculate(){this.calculateDists()}cover(t){return this.terrain.cover(this.cell,t)}get at(){return this.terrain.fromCid(this.cid)}apCost(t){if(!this.dists)return Number.MAX_VALUE;let e=this.dists[t.cid][0];return Math.ceil(e/this.speed)}canShoot(){return this.ap>0}perpendicularVelocity(t){if(!this.moving)return 0;return g(d(c(t,this.at)),this.velocity)}velocityAccuracyBonus(t){return-Math.round(4*Math.abs(this.perpendicularVelocity(t)))}velocityDefenceBonus(t){return Math.round(4*Math.abs(this.perpendicularVelocity(t)))}focusAccuracyBonus(t){if(!this.focused)return 0;let e=(i=c(t,this.at),s=this.focus,Math.atan2(g(i,s),p(i,s)));var i,s;let a=1-4*Math.abs(e)/Math.PI;return a<0&&(a/=2),Math.round(a*u(this.focus))}focusDefenceBonus(t){return this.focusAccuracyBonus(t)}hitChance(t,e,i=!1,s){if(e||(e=t.unit),e==this)return 0;let a=i?this.cell.dfov:this.cell.xfov,n=t.at;if(!a.has(t.cid))return 0;let r=this.cover(t||e.cell);return-1==r?0:(s||(s={}),s.accuracy=this.gun.accuracy,s.cover=25*-r,s.dodge=-e.def,s.distance=-this.gun.accuracyPenalty(this.dist(e)),s.ownVelocity=this.velocityAccuracyBonus(n),s.targetVelocity=-e.velocityDefenceBonus(this.at),s.ownFocus=this.focusAccuracyBonus(n),s.targetFocus=-e.focusDefenceBonus(this.at),s.cover<s.targetVelocity?s.targetVelocity=0:s.cover=0,console.log(JSON.stringify(s)),Math.round(Object.values(s).reduce((t,e)=>t+e)))}die(){this.terrain.units=this.terrain.units.filter(t=>t.hp>0),delete this.cell.unit,0==this.team.units.length&&this.terrain.declareVictory(this.team.enemy)}takeDamage(t){this.hp=Math.max(0,this.hp-t),this.hp<=0&&this.die(),this.onChange()}onChange(){this.terrain.animate({char:this})}shoot(t){return i(this,void 0,void 0,function*(){if(!t)return!1;let e=t.unit;if(!e)return!1;let i=this.hitChance(t);if(0==i)return!1;let s=this.terrain.rni()%100<i;this.ap=0;let a=0;s&&(a=this.gun.damageRoll(this,e.cell,this.terrain.rnf)),yield this.animateShoot(e.cid,a),e.takeDamage(a),e.hp<=0&&this.team.calculate();let n=d(c(t.at,this.at));return this.focusAccuracyBonus(t.at),this.focus=f(n,Math.max(this.gun.maxFocus,10+this.focusAccuracyBonus(t.at))),this.velocity=[0,0],!0})}teleport(t){if(this.cell){if(this.cell==t)return;delete this.cell.unit}t.unit=this,this.cell=t,this.calculate()}calculateReactionFire(t){let e=this.team.enemy.units,i=[];for(let a of e){if(0==a.ap)continue;let e=s(t,t=>!t.unit&&a.averageDamage(t,this,!0));e&&e.val>=1&&i.push({moment:e.ind,enemy:a})}return i=i.sort((t,e)=>t.moment>e.moment?1:-1)}calculateVelocity(t){let e=c(t[t.length-1].at,t[0].at);return i=d(e,this.speed),[Math.round(i[0]),Math.round(i[1])];var i}move(t){return i(this,void 0,void 0,function*(){if(t==this.cell||!t)return!1;this.ap-=this.apCost(t);let e=this.pathTo(t);this.velocity=this.calculateVelocity(e),this.focus=d(this.velocity,10);let i=this.team.enemy.units,a=[];for(let t of i){if(0==t.ap)continue;let i=s(e,e=>!e.unit&&t.averageDamage(e,this,!0));i&&i.val>=1&&a.push({moment:i.ind,enemy:t})}a=a.sort((t,e)=>t.moment>e.moment?1:-1);for(let t of a){let i=e[t.moment];if(yield this.animateWalk(this.pathTo(i)),this.teleport(i),yield t.enemy.shoot(i),!this.alive)return!0}return yield this.animateWalk(this.pathTo(t)),this.teleport(t),this.cell.goody&&(this.hp=this.maxHP,this.cell.goody=0),!0})}animateWalk(t){return i(this,void 0,void 0,function*(){t.length<=1||(yield this.terrain.animate({anim:"walk",char:this,path:t}))})}animateShoot(t,e){return i(this,void 0,void 0,function*(){yield this.terrain.animate({anim:"shoot",from:this.cid,to:t,damage:e})})}canDamage(t){return t&&this.team!=t.team&&this.cell.xfov.has(t.cid)&&this.canShoot()}bestPosition(){let t=this.team;this.calculate();let e,i=-100;for(let s in this.dists){let a=this.dists[s][0];if(a>this.speed*this.ap)continue;let n=t.strength[s]-t.weakness[s]-.5*r(a,this.speed)-.001*a;(n+=t.distance[s]*this.aggression)>i&&(i=n,e=Number(s))}return this.terrain.cells[e]}averageDamage(t,e,i=!1){return this.hitChance(t,e,i)*this.gun.averageDamage(this,t)/100}bestTarget(){let t=-100,e=null;for(let i of this.terrain.units){if(i.team==this.team||i.hp<=0)continue;let s=this.averageDamage(i.cell);s>t&&(t=s,e=i.cell)}return e}think(){return i(this,void 0,void 0,function*(){yield this.move(this.bestPosition()),this.ap>0&&(yield this.shoot(this.bestTarget()))})}dist(t){return m(this.at,t.at)}get alive(){return this.hp>0}friendly(t){return t&&this.team==t.team}get moving(){return u(this.velocity)>0}get focused(){return u(this.focus)>0}}C.EYE=-1,C.GUNNER=1,C.ASSAULT=2,C.SNIPER=3,C.RECON=4,C.MEDIC=5,C.HEAVY=6,C.COMMANDER=7,C.saveFields="hp ap exhaustion stress focus velocity".split(" ");class P{constructor(t){this.damageOptimalRange=[1,20],this.damage=[4,5],this.damagePenaltyPerCell=100,this.accuracyPenaltyMax=20,this.accuracy=60,this.accuracyOptimalRange=[1,1],this.accuracyPenaltyPerCell=1,this.damagePenaltyMax=2,this.breach=0,this.maxFocus=30,this.name="Gun",t&&Object.assign(this,t)}damagePenalty(t){let e=0;return t<this.damageOptimalRange[0]&&(e=this.damageOptimalRange[0]-t),t>this.damageOptimalRange[1]&&(e=t-this.damageOptimalRange[1]),Math.floor(Math.min(this.damagePenaltyMax,this.damagePenaltyPerCell*e))}accuracyPenalty(t){let e=0;return t<this.accuracyOptimalRange[0]&&(e=this.accuracyOptimalRange[0]-t),t>this.accuracyOptimalRange[1]&&(e=t-this.accuracyOptimalRange[1]),Math.floor(Math.min(this.accuracyPenaltyMax,this.accuracyPenaltyPerCell*e))}averageDamage(t,e,i){i||(i=e.unit);let s=.5*(this.damage[1]+this.damage[0]);return i&&(s-=Math.max(0,e.unit.armor-this.breach)),s-=this.damagePenalty(t.dist(e)),Math.max(0,Math.round(10*s)/10)}damageRoll(t,e,i){let s=i()*(this.damage[1]-this.damage[0])+this.damage[0];return e.unit&&(s-=Math.max(0,e.unit.armor-this.breach)),s-=this.damagePenalty(t.dist(e)),Math.max(0,Math.round(s))}}class x{constructor(t,e,i,s){var a;this.campaign=t,this.stage=e,this.animate=s,this.aiTurn=!1,this.rni=(a=1,(a%=2147483647)<=0&&(a+=2147483646),()=>a=16807*a%2147483647),this.rnf=(()=>this.rni()%1e9/1e9);for(let e in t.guns)t.guns[e]=new P(t.guns[e]);this.init(this.stage.terrain),i&&this.loadState(i)}serialize(){return{teams:this.teams.map(t=>t.serialize()),activeTeam:this.activeTeam.faction}}init(t){this.terrainString=t;let e=t.split("\n").map(t=>t.trim()).filter(t=>t.length>0);this.h=e.length,this.w=Math.max(...e.map(t=>t.length)),this.cells=[],this.units=[],this.teams=[],delete this.victor;for(let t=0;t<2;t++){let e=new b(this,t);this.teams[t]=e}for(let t=0;t<this.h;t++){let i=e[t];for(let e=0;e<this.w;e++){let s=e+t*this.w,a=i[e]||" ",n=new S(this,s,["+","#"].indexOf(a)+1);this.campaign.units[a.toLowerCase()]&&new C(n,{symbol:a,cid:s}),"*"==a&&(n.goody=1),"~"==a&&(n.hole=!0),this.cells[s]=n}}for(let t=0;t<this.w;t++)this.seal(t,0),this.seal(t,this.h-1);for(let t=0;t<this.h;t++)this.seal(0,t),this.seal(this.w-1,t);this.dir8Deltas=x.dirs8.map(t=>t[0]+t[1]*this.w);for(let t of this.cells)t.obstacle||t.calculatePovAnCover();console.log(this.w),console.log(this.h),console.time("FOV");for(let t of this.cells)t.obstacle||(t.calculatePovAnCover(),t.calculateFov());console.timeEnd("FOV");for(let t of this.cells)t.obstacle||(t.calculateXFov(),t.calculateDFov());this.activeTeam=this.teams[0],console.log(this)}seal(t,e){this.cells[this.cid(t,e)].seal()}loadState(t){t&&t.teams&&(this.units=[],this.cells.forEach(t=>delete t.unit),this.teams=t.teams.map((t,e)=>{let i=new b(this,e);for(let e of t.units){new C(this.cells[e.cid],e).team=i}return i}),this.activeTeam=this.teams[t.activeTeam])}calcDists(t){let e=this.cells.map(t=>[Number.MAX_VALUE,-1]);e[t]=[0,-1];let i=[t],s=this.cells[t].unit;for(;i.length>0;){let t=i.shift(),a=e[t][0],n=this.cells[t];for(let r=0;r<8;r++){let o=r%2,l=this.dir8Deltas[r]+t,h=this.cells[l];if(!h.passable||h.unit&&!h.unit.friendly(s))continue;if(o&&(this.cells[t+this.dir8Deltas[(r+1)%8]].obstacle||this.cells[t+this.dir8Deltas[(r+7)%8]].obstacle))continue;let c=h.obstacle+n.obstacle+(n.unit?1:0)+(h.unit?1:0);if(c>1&&o&&c>0)continue;let u=c+(o?1.414:1);e[l][0]>a+u&&(e[l]=[a+u,t],i.push(l))}}for(let t=0;t<e.length;t++)this.cells[t].standable||(e[t][0]=Number.MAX_VALUE);return e}safeCid(t,e){if(t>=0&&e>=0&&t<this.w&&e<this.h)return this.cid(t,e)}cid(t,e){return t+e*this.w}cellAt(t,e){return this.cells[this.cid(t,e)]}fromCid(t){return[t%this.w,r(t,this.w)]}calculateFov(t){let[e,i]=this.fromCid(t),s=new Set;return y(e,i,(t,e)=>!this.cellAt(t,e).opaque,(t,e)=>{for(let i of this.cells[this.cid(t,e)].peeked)s.add(i.cid)}),s}calculateDirectFov(t){let[e,i]=this.fromCid(t),s=new Set;return y(e,i,(t,e)=>!this.cellAt(t,e).opaque,(t,e)=>{s.add(this.cid(t,e))}),s}obstacles(t){let e=[];for(let i=0;i<8;i+=2){let s=t+this.dir8Deltas[i];e.push(this.cells[s].obstacle)}return e}cover(t,e){if(!t.xfov.has(e.cid))return-1;let i=2;for(let s of t.povs){let t=0,a=c(e.at,s.at);for(let i=0;i<4;i++){let s=e.cover[i];s<=t||p(x.dirs8[2*i],a)<-.001&&(t=s)}t<i&&(i=t)}return i}declareVictory(t){this.victor=t}get we(){return this.teams[b.BLUE]}endSideTurn(){this.activeTeam.endTurn(),this.teams[(this.activeTeam.faction+1)%this.teams.length].beginTurn()}}x.dirs8=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];class w{constructor(t,e,i,s,a=[0,0]){this.text=t,this.color=e,this.lifeTime=i,this.at=s,this.vel=a,this.time=0}update(t){return this.time+=t,this.at=h(this.at,this.vel,t),this.time<this.lifeTime}render(t){t.save(),t.fillStyle=this.color,t.shadowColor="black",t.shadowBlur=1,t.shadowOffsetX=1,t.shadowOffsetY=1,t.font='12pt "Courier"',t.textAlign="center";let e=0,i=0;for(let s of this.text.split("|"))t.fillText(s.trim().substr(0,Math.floor(70*this.time)-i),this.at[0],this.at[1]+e),i+=s.length,e+=20;t.restore()}}let k=0;const T=4;class A{constructor(t,e){this.unit=t,this.at=e.cidToPoint(t.cid)}}class z{constructor(t){this.game=t,this.canvasCacheOutdated=!1,this.anim=[],this.animQueue=[],this.dolls=[],this.tileSize=32,this.screenPos=[0,0],this.dollCache={},this.initSprites()}get canvas(){return this.game.canvas}synch(){this.dolls=this.terrain.units.map(t=>new A(t,this)),this.updateCanvasCache()}get terrain(){return this.game.terrain}resize(){this.canvas&&(this.canvas.width=this.canvas.clientWidth,this.canvas.height=this.canvas.clientHeight,this.width=this.canvas.clientWidth,this.height=this.canvas.clientHeight,this.terrain&&(this.screenPos=[.5*(this.width-this.terrain.w*this.tileSize),.5*(this.height-this.terrain.h*this.tileSize)]),this.canvas.getContext("2d").imageSmoothingEnabled=!1)}update(t){if(this.lookingAt&&m(this.lookingAt,this.screenPos)>1){let e=m(this.lookingAt,this.screenPos);this.screenPos=v(this.screenPos,this.lookingAt,Math.min(1,t*Math.max(e/100,5)))}else{delete this.lookingAt;let e=this.anim;this.anim=[],e=e.filter(e=>e.update(t)),this.anim=this.anim.concat(e),this.animQueue.length>0&&!this.animQueue[0].update(t)&&this.animQueue.shift(),0==this.animQueue.length&&this.blockingAnimationEnd&&(this.blockingAnimationEnd(),delete this.blockingAnimationEnd)}this.dolls=this.dolls.filter(t=>t.unit.alive)}render(t){if(!t)return;t.clearRect(0,0,this.width,this.height);let e=this.terrain;t.save(),t.translate(...this.screenPos),this.canvasCache&&!this.canvasCacheOutdated||this.updateCanvasCache(),t.clearRect(0,0,e.w*this.tileSize,e.h*this.tileSize),t.drawImage(this.canvasCache,0,0);for(let e of this.dolls)this.renderDoll(t,e);for(let e of this.anim)e.render&&e.render(t);return this.animQueue.length>0&&this.animQueue[0].render&&this.animQueue[0].render(t),this.busy||this.renderPath(t,this.game.hovered),t.restore(),this.animQueue.length>0}renderPath(t,e){let i=this.game.chosen;if(!(i&&e&&i.dists&&i.dists[e.cid]&&-1!=i.dists[e.cid][1]))return;if(!i.reachable(e))return;let s=this.cidToCenterPoint(e.cid);t.beginPath(),i.reachable(e)?t.arc(s[0],s[1],this.tileSize/4,0,2*Math.PI):(t.moveTo(s[0]-this.tileSize/4,s[1]-this.tileSize/4),t.lineTo(s[0]+this.tileSize/4,s[1]+this.tileSize/4),t.stroke(),t.beginPath(),t.moveTo(s[0]-this.tileSize/4,s[1]+this.tileSize/4),t.lineTo(s[0]+this.tileSize/4,s[1]-this.tileSize/4)),t.stroke();let a=i.pathTo(e);t.beginPath(),t.moveTo(...this.cidToCenterPoint(a[0].cid));for(let e of a)t.lineTo(...this.cidToCenterPoint(e.cid));t.stroke()}renderThreats(t,e){let i=this.terrain,s=e.cid;i.teams[b.RED].strength&&(t.strokeStyle="#800",t.lineWidth=4==i.teams[b.RED].strength[s]?3:1,t.beginPath(),t.moveTo(3.5,3.5),t.lineTo(3.5,3.5+3*i.teams[b.RED].strength[s]),t.stroke(),t.strokeStyle="#008",t.lineWidth=4==i.teams[b.RED].weakness[s]?3:1,t.beginPath(),t.moveTo(3.5,3.5),t.lineTo(3.5+3*i.teams[b.RED].weakness[s],3.5),t.stroke())}renderCell(t,e){let i=this.cidToPoint(e.cid),s=[,this.lowTile,this.highTile][e.obstacle];e.hole&&(s=this.waterTile),s&&t.drawImage(s,i[0],i[1]),e.goody&&(t.translate(...i),t.fillStyle="#080",t.fillRect(.35*this.tileSize,0,.3*this.tileSize,this.tileSize),t.fillRect(0,.35*this.tileSize,this.tileSize,.3*this.tileSize),t.translate(...f(i,-1)))}renderCellUI(t,e){let i=this.cidToPoint(e.cid),s=this.game;if(t.strokeStyle="#000",t.lineWidth=2,s.hovered&&!s.hovered.opaque){let a=s.hovered.xfov.has(e.cid);s.hovered.rfov.has(e.cid)||(t.fillStyle=`rgba(${a?"50,50,0,0.04":"0,0,50,0.1"})`,t.fillRect(i[0],i[1],this.tileSize,this.tileSize))}if(s.chosen&&s.chosen.dists&&!this.busy){let a=s.chosen.apCost(e);if(a>0&&a<=s.chosen.ap){let e=[,this.ap1Sprite,this.ap2Sprite][Math.floor(a)];e&&t.drawImage(e,i[0],i[1])}}e.povs&&e.peeked.includes(this.game.hovered)&&(t.strokeStyle="rgba(0,0,0,0.5)",t.lineWidth=.5,t.beginPath(),t.arc(i[0]+this.tileSize/2,i[1]+this.tileSize/2,this.tileSize/4,0,2*Math.PI),t.stroke())}renderDoll(t,e){t.save(),t.translate(...e.at),this.useDollCache(t,e),e.unit==this.game.chosen?this.outline(t,e,Math.sin((new Date).getTime()/100)+1):e.unit==this.game.hoveredChar&&this.outline(t,e,1.5),t.restore()}outline(t,e,i=2){t.save(),t.strokeStyle=e.unit.strokeColor,t.lineWidth=i,t.beginPath(),t.arc(this.tileSize/2,this.tileSize/2,.4*this.tileSize,0,2*Math.PI),t.stroke(),t.restore()}useDollCache(t,e){let i=e.unit,s=["cid","hp","ap","kind","faction","focus","velocity"].map(t=>i[t]);s.push(this.dollTint(e));let a=JSON.stringify(s);a in this.dollCache||(this.dollCache[a]=n([2*this.tileSize,2*this.tileSize],t=>this.renderDollBody(t,e,this.dollTint(e)))),t.drawImage(this.dollCache[a],-.5*this.tileSize,-.5*this.tileSize)}dollTint(t){if(this.busy||this.terrain.aiTurn)return 0;let e=t.unit,i=0,s=this.game.hovered;if(s&&!s.opaque&&s.xfov){i=s.xfov.has(e.cid)||e.team==this.game.lastSelectedFaction?(0==this.terrain.cover(e.cell,s)?1:0)+(0==this.terrain.cover(s,e.cell)?2:0):4}return this.game.hovered||(i=0),i}renderDollBody(t,e,i){let s=e.unit;if(t.fillStyle=["#fff","#fba","#cfa","#ffa","#ccc"][i],t.strokeStyle=s.strokeColor,t.scale(this.tileSize,this.tileSize),t.translate(.5,.5),t.shadowColor="#444",t.shadowOffsetX=1,t.shadowOffsetY=1,t.shadowBlur=4,t.beginPath(),t.arc(.5,.5,.4,0,2*Math.PI),t.fill(),t.shadowColor="rgba(0,0,0,0)",t.lineWidth=.1,s.ap>0&&(t.fillStyle=e.unit.strokeColor,t.beginPath(),t.moveTo(.2,.3),t.lineTo(.3,.2),t.stroke(),s.ap>1&&(t.beginPath(),t.moveTo(.8,.3),t.lineTo(.7,.2),t.stroke())),t.beginPath(),t.fillStyle=s.strokeColor,t.textAlign="center",t.font="bold 0.5pt Courier",t.fillText(s.symbol.toUpperCase(),.5,.66),t.stroke(),t.save(),t.lineWidth=.05,t.transform(-1,0,0,1,1,0),t.setLineDash([6/s.maxHP-.05,.05]),t.beginPath(),t.arc(.5,.5,.35,0,Math.PI*s.hp/s.maxHP),t.stroke(),t.restore(),s.moving){t.save(),t.translate(.5,.5);let e=Math.atan2(s.velocity[1],s.velocity[0]);t.rotate(e),t.lineWidth=.01+.01*u(s.velocity),t.moveTo(-.6,-.15),t.lineTo(-.45,0),t.lineTo(-.6,.15),t.stroke(),t.restore()}if(s.focused){t.save(),t.translate(.5,.5);let e=Math.atan2(s.focus[1],s.focus[0]);t.rotate(e),t.lineWidth=.003*u(s.focus),t.moveTo(.45,-.15),t.lineTo(.6,0),t.lineTo(.45,.15),t.stroke(),t.restore()}}cidToPoint(t){return this.terrain.fromCid(t).map(t=>t*this.tileSize)}cidToCenterPoint(t){return f(h(this.terrain.fromCid(t),[.5,.5]),this.tileSize)}cidToCenterScreen(t){return h(this.cidToCenterPoint(t),this.screenPos)}cidFromPoint(t,e){return this.terrain.safeCid(r(t,this.tileSize),r(e,this.tileSize))}cellAtScreenPos(t,e){return this.terrain.cells[this.cidFromPoint(...c([t,e],this.screenPos))]}get animationSpeed(){return this.terrain.aiTurn,.5}updateCanvasCache(){this.canvasCache||(this.canvasCache=a(this.terrain.w*this.tileSize,this.terrain.h*this.tileSize)),this.canvasTerrain||(this.canvasTerrain=a(this.terrain.w*this.tileSize,this.terrain.h*this.tileSize));let t=this.canvasTerrain.getContext("2d");t.clearRect(0,0,this.terrain.w*this.tileSize,this.terrain.h*this.tileSize);for(let e=0;e<this.terrain.cells.length;e++){let i=this.terrain.cells[e];this.renderCell(t,i)}let e=this.canvasCache.getContext("2d");e.clearRect(0,0,this.terrain.w*this.tileSize,this.terrain.h*this.tileSize),e.save(),e.shadowBlur=4,e.shadowOffsetX=1,e.shadowOffsetY=1,e.shadowColor="#444",e.drawImage(this.canvasTerrain,0,0),e.restore();for(let t=0;t<this.terrain.cells.length;t++){let i=this.terrain.cells[t];this.renderCellUI(e,i)}this.canvasCacheOutdated=!1}resetCanvasCache(){this.canvasCacheOutdated=!0}text(t,e){let i=h(t,[0,-10]);this.anim.push(new w(e,"#f00",3,i,[0,-10]))}renderBullet(t,[e,i],s){t.beginPath();let a=d(c(i,e),-20),n=v(e,i,s);this.lookAt(n);let r=h(n,a);var o=t.createLinearGradient(r[0],r[1],n[0],n[1]);o.addColorStop(0,"rgba(0,0,0,0)"),o.addColorStop(1,"rgba(0,0,0,1)"),t.lineWidth=4,t.strokeStyle=o,t.moveTo(...r),t.lineTo(...n),t.stroke(),t.lineWidth=1,t.strokeStyle="#000"}insideScreen(t){return(t=h(t,this.screenPos))[0]>=k&&t[1]>=k&&t[0]<=this.width-k&&t[1]<=this.height-k}lookAtCid(t){this.lookAt(this.cidToCenterPoint(t))}lookAt(t){this.insideScreen(t)||(this.lookingAt=[-t[0]+this.width/2,-t[1]+this.height/2])}shoot(t,e,i){let s,a,n,r,o=[t,e].map(t=>this.terrain.cells[t]);t:for(n of o[0].povs)for(r of o[1].povs)if(n.rfov.has(r.cid)){s=[n,r].map(t=>this.cidToCenterPoint(t.cid));break t}if(i>0)a=s[1];else{let t=d(c(s[1],s[0]));a=h(h(s[1],[(l=t)[1],-l[0]]),t,10*this.tileSize)}var l;let u=this.dollAt(t),p=this.dollAt(e),g=0;n.cid==t&&r.cid==e&&(g=1),this.animQueue.push({update:n=>{if(g>=1&&g<=2)g+=n*Math.min(10,1e3/m(s[0],a)*this.animationSpeed);else{let i=.6*(g<1?g:3-g);for(let a=0;a<2;a++){[u,p][a].at=v(this.cidToPoint([t,e][a]),c(s[a],[this.tileSize/2,this.tileSize/2]),i)}g+=n*this.animationSpeed*10}return!(g>3)||(this.text(s[1],i>0?`-${i}`:"MISS"),u.at=this.cidToPoint(u.unit.cid),p.at=this.cidToPoint(p.unit.cid),!1)},render:t=>{g>1&&g<2&&this.renderBullet(t,[s[0],a],g-1)}})}walk(t,e){let i=e.map(t=>this.cidToPoint(t.cid)),s=0;this.animQueue.push({update:e=>(s+=15*e*this.animationSpeed,i[Math.floor(s)+1]?(t.at=v(i[Math.floor(s)],i[Math.floor(s)+1],s-Math.floor(s)),this.lookAt(t.at),!0):(t.at=i[i.length-1],!1))})}dollOf(t){return this.dolls.find(e=>e.unit==t)}dollAt(t){return this.dolls.find(e=>e.unit.cid==t)}draw(t){return i(this,void 0,void 0,function*(){switch(t.anim){case"walk":this.walk(this.dollOf(t.char),t.path);break;case"shoot":this.shoot(t.from,t.to,t.damage)}yield this.waitForAnim()})}waitForAnim(){return new Promise(t=>{this.blockingAnimationEnd=(()=>t())})}get busy(){return this.animQueue.length>0}initSprites(){this.ap1Sprite=n([this.tileSize,this.tileSize],t=>{t.strokeStyle="#555",t.strokeRect(4.5,4.5,this.tileSize-8,this.tileSize-8)}),this.ap2Sprite=n([this.tileSize,this.tileSize],t=>{t.strokeStyle="#bbb",t.strokeRect(4.5,4.5,this.tileSize-8,this.tileSize-8)}),this.hiddenSprite=n([this.tileSize,this.tileSize],t=>{t.fillStyle="rgba(0,0,0,0.12)",t.fillRect(0,0,this.tileSize,this.tileSize)}),this.dashPattern=n([T,T],t=>{for(let e=0;e<T;e++)t.fillRect(e,e,1,1)}),this.wavePattern=n([8,8],t=>{t.beginPath(),t.arc(4.5,2,5,0,Math.PI),t.stroke()}),this.crossPattern=n([3,3],t=>{for(let e=0;e<T;e++)t.fillRect(T-e-1,e,1,1),t.fillRect(e,e,1,1)}),this.highTile=n([this.tileSize,this.tileSize],t=>{t.fillStyle="#000",t.fillRect(0,0,this.tileSize,this.tileSize)}),this.lowTile=n([this.tileSize,this.tileSize],t=>{t.fillStyle="#fff",t.fillRect(0,0,this.tileSize,this.tileSize),t.fillStyle=t.createPattern(this.dashPattern,"repeat"),t.fillRect(0,0,this.tileSize,this.tileSize)}),this.waterTile=n([this.tileSize,this.tileSize],t=>{t.fillStyle=t.createPattern(this.wavePattern,"repeat"),t.fillRect(0,0,this.tileSize,this.tileSize)})}}let _=[{name:"Default Campaign",version:"0.1",author:"Baturinsky, Red Knight",stage:"Red Knight's Backyard",guns:{carbine:{name:"Carbine",damage:[4,5],damagePenaltyPerCell:100,accuracyPenaltyMax:20,accuracy:60,accuracyOptimalRange:[1,1],accuracyPenaltyPerCell:1,damagePenaltyMax:2,breach:0},sniper:{name:"Sniper",damageOptimalRange:[1,30],damagePenaltyPerCell:.1,accuracyOptimalRange:[10,30],accuracyPenaltyPerCell:1,breach:1,aggression:-.1},shotgun:{name:"Shotgun",damage:[6,7],damageOptimalRange:[1,1],damagePenaltyMax:4,damagePenaltyPerCell:.3,accuracy:80,accuracyOptimalRange:[1,1],accuracyPenaltyPerCell:5,accuracyPenaltyMax:40,aggression:.1}},units:{g:{name:"Gunner",speed:4,maxHP:14,gun:"carbine"},a:{name:"Assault",speed:6,armor:1,gun:"shotgun"},s:{name:"Sharpshooter",maxHP:7,def:10,gun:"sniper"}},stages:[{name:"Backyard 13",version:"1",author:"baturinsky",terrain:"\n    ##################################################\n    #      #  a      ++++# + #    ++#  s             #\n    # #    #  +         +#   #    ++#  ++++++++      #\n    #      +  +         +#   #    ++#  ++++++++      #\n    #S#    +  +         +# * #      #                #\n    #      #  +          #   #      #                #\n    # #    #             #   #      #                #\n    #      #  +          ##a## ######                #\n    #             *                                  #\n    #                                                #\n    #A#    #             #s         #a     ~~~       #\n    #      #  +          #          #    ~~~~~~      #\n    #A#    #  #      #a  #  ###    ++   ~~~#A#~~~    #\n    #      #  #      #   #  #      ++       * ~~~    #\n    #G#    #  ########   #  #      +#    ~ # #~~     #\n    #      #             #          #    ~~~~~~~     #\n    # #    ######  ###########  #####      ~~~~      #\n    #      #++++      ++ # +        #                #\n    #S#    #+            # +   ++   +                #\n    #      #            +#          #                #\n    #         ######g    #       +  #                #\n    #         ######g    #####  #####                #\n    #                    #   g      #      #        +#\n    #      #          +  #                         ++#\n    #G#    #+    *       #+++    +++#   #     #    ++#\n    #      #++      +    #          #g               #\n    # #    ######++###########++##########    ########\n    #                 S+                             #\n    #         +              A+                      #\n    ##################################################\n    "},{name:"Red Knight's Backyard",version:"1",author:"Red Knight",terrain:"\n    ##################################################\n    ################# g+         ###++    ##      ++##\n    ################# ++         +                 +##\n    ####################               a+          +##\n    #################                   +    +      ##\n    #################* #          ++++      ##      ##\n    ####################                     +      ##\n    #################        +# + #+a##     g#   ++g##\n    ##################+##  ####################  +####\n    ###   +++  #*+  # g#   a###################      #\n    ###       a#   +# +#    ##########+#++++  #   # *#\n    #   +      ###  #  #    #        # a+++   #   ####\n    #  g+        #  #+ #       +  +  #              ##\n    #   +        ## ## #      g+  +     +           ##\n    #                  #  g #        #+  +++  #     ##\n    #    + ## ####  #     ++#  +  +  #a  +#+  #     ##\n    #    + g# +###  ####    #######  ##########     ##\n    #++  + ## ##a+  +  #   +##+a+     + #  +  ##+   ##\n    #       # +#       #++ +# + +   +g+ # ++ +#+    ##\n    #       # +#   +   #+         +++               ##\n    #   #++## +## #+# ##            +               ##\n    #   +         +         #         ++      #     ##\n    #                  #    # ####### ### ## ### +  ##\n    #   #  a+          #g   # a*##++a     #+  #  +  ##\n    #~~~~~~~~~ ~~~~~~####  ###########++######## +  ##\n    #~~~~~~~~# #~~~~~~##    a+#+ +                  ##\n    #~~~~~~~~ *              +     # ##         SAGA##\n    ###~~~~~~# #~~~~~~~~           #  #         SGGA##\n    ####~~~~~~~~~~~~~~~#           # *#         SAAA##\n    ##################################################\n    "}]}];class M{constructor(t){this.updateUI=t,this.time=0,this.aiSides=M.PAI,this.momentum=[0,0],this.renderer=new z(this),this.init()}static loadCampaign(t){return l(localStorage.getItem(M.campaignPrefix+t))}static campaignById(t){return _.find(e=>e.name==t||e.name+" "+e.version==t)||M.loadCampaign(t)||_[0]}static savedCampaignIds(){return Object.keys(localStorage).filter(t=>t.substr(0,M.savePrefixLength)==M.campaignPrefix).map(t=>t.substr(M.savePrefixLength)).sort().reverse()}static allCampaignIds(){return _.map(t=>t.name+" "+t.version).concat(M.savedCampaignIds())}stageByName(t){return this.campaign.stages.find(e=>e.name==t)||this.campaign.stages[0]}init(t,e=!0){let i;delete this.chosen,delete this.hovered,delete this.lastSelectedFaction,t&&((i=l(t)).campaign?this.campaign=M.campaignById(i.campaign):(this.campaign=i,this.customCampaign=!0)),this.campaign||(this.campaign=M.campaignById()),this.init2(this.campaign,this.stageByName(i&&i.stage),i&&e?i.state:null)}makeNotCustom(){this.customCampaign=!1}init2(t,e,i){this.campaign=t,this.stage=e,this.terrain=new x(this.campaign,this.stage,i||null,t=>this.renderer.draw(t)),this.renderer.synch(),this.updateUI({activeTeam:this.activeTeam})}initStage(t){this.init2(this.campaign,this.campaign.stages[t])}serialize(t={state:!0}){let e={};return t.campaign||this.customCampaign?Object.assign(e,this.campaign):e.campaign=this.campaign.name,t.state&&(e.state=this.terrain.serialize()),e.stage=this.stage.name,JSON.stringify(e,null,"  ").replace(/\\n/g,"\n")}setCanvas(t){this.canvas=t,this.ctx=t.getContext("2d"),this.renderer&&this.renderer.resize()}over(){return!1}update(t){this.lastLoopTimeStamp||(this.lastLoopTimeStamp=t-.001);let e=Math.min(.02,(t-this.lastLoopTimeStamp)/1e3);this.lastLoopTimeStamp=t,this.time+=e,this.renderer.update(e),this.renderer.render(this.ctx),this.over()&&this.updateUI({over:!0}),this.chosen&&!this.chosen.alive&&delete this.chosen}updateTooltip(t,e){this.updateUI({tooltipAt:t,tooltipText:e})}click(t,e){let i=this.renderer.cellAtScreenPos(t,e);this.clickCell(i),this.renderer.resetCanvasCache()}isAi(t){return this.aiSides&1<<t.faction}canPlayAs(t){return!this.isAi(t.team)}choose(t){this.chosen=t,t&&(this.lastChosen=this.chosen,this.chosen.calculate(),this.renderer.lookAtCid(this.chosen.cid),this.renderer.resetCanvasCache())}clickCell(t){if(t){if(t.unit){if(this.chosen&&this.chosen.team==t.unit.team&&this.canPlayAs(t.unit))return void this.choose(t.unit);if(this.chosen&&this.chosen.canDamage(t.unit))return void this.chosen.shoot(t);this.chosen==t.unit?this.cancel():this.canPlayAs(t.unit)&&this.choose(t.unit),this.chosen&&this.chosen.calculate()}!t.unit&&this.chosen&&this.chosen.reachable(t)&&(this.chosen.move(t),this.terrain.teams[b.RED].calculate()),this.lastSelectedFaction=this.chosen?this.chosen.team:this.terrain.we}}cancel(){delete this.chosen,this.renderer.resetCanvasCache()}drag(t,e){this.renderer.screenPos=h(this.renderer.screenPos,[t,e])}hover(t,e){let i=this.renderer.cellAtScreenPos(t,e);if(this.hovered==i)return;if(!i)return delete this.hovered,void this.renderer.resetCanvasCache();if(!i)return;this.hovered=i;let s="default";(this.chosen&&this.chosen.reachable(i)||i.unit)&&(s="pointer"),this.chosen&&this.chosen.canDamage(i.unit)?(s="crosshair",this.updateTooltip(this.renderer.cidToCenterScreen(i.cid),`${this.chosen.hitChance(i)}% ${this.chosen.gun.averageDamage(this.chosen,i).toFixed(1)}`)):this.updateTooltip(),document.body.style.cursor=s,this.updateUI({chosen:this.chosen,unitInfo:i.unit}),this.renderer.busy||this.renderer.resetCanvasCache()}get blue(){return this.terrain.teams[b.BLUE]}get red(){return this.terrain.teams[b.RED]}get activeTeam(){return this.terrain.activeTeam}endTurn(t){return i(this,void 0,void 0,function*(){if(this.aiSides=t,this.isAi(this.activeTeam))yield this.endSideTurn();else do{yield this.endSideTurn()}while(this.isAi(this.activeTeam))})}endSideTurn(){return i(this,void 0,void 0,function*(){delete this.chosen;let t=this.activeTeam;this.isAi(t)&&(yield t.think()),this.terrain.endSideTurn(),this.renderer.resetCanvasCache(),this.updateUI({activeTeam:this.activeTeam})})}setAiSides(t){this.aiSides=t}get hoveredChar(){if(this.hovered)return this.hovered.unit}chooseNext(t=1){if(this.chosen){let e=this.chosen.team.units,i=e[(e.indexOf(this.chosen)+e.length+t)%e.length];this.choose(i)}else this.lastChosen?this.choose(this.lastChosen):this.choose(this.terrain.we.units[0])}}M.PAI=2,M.PP=0,M.AIAI=3,M.savePrefix="2aps:",M.campaignPrefix="2apc:",M.savePrefixLength=M.savePrefix.length,M.timeStampLength=13;var D=function(){},I={},E=[],N=[];function R(t,e){var i,s,a,n,r=N;for(n=arguments.length;n-- >2;)E.push(arguments[n]);for(e&&null!=e.children&&(E.length||E.push(e.children),delete e.children);E.length;)if((s=E.pop())&&void 0!==s.pop)for(n=s.length;n--;)E.push(s[n]);else"boolean"==typeof s&&(s=null),(a="function"!=typeof t)&&(null==s?s="":"number"==typeof s?s=String(s):"string"!=typeof s&&(a=!1)),a&&i?r[r.length-1]+=s:r===N?r=[s]:r.push(s),i=a;var o=new D;return o.nodeName=t,o.children=r,o.attributes=null==e?void 0:e,o.key=null==e?void 0:e.key,o}function O(t,e){for(var i in e)t[i]=e[i];return t}function L(t,e){t&&("function"==typeof t?t(e):t.current=e)}var B="function"==typeof Promise?Promise.resolve().then.bind(Promise.resolve()):setTimeout,U=/acit|ex(?:s|g|n|p|$)|rph|ows|mnc|ntw|ine[ch]|zoo|^ord/i,F=[];function W(t){!t._dirty&&(t._dirty=!0)&&1==F.push(t)&&B(G)}function G(){for(var t;t=F.pop();)t._dirty&&ot(t)}function H(t,e){return t.normalizedNodeName===e||t.nodeName.toLowerCase()===e.toLowerCase()}function V(t){var e=O({},t.attributes);e.children=t.children;var i=t.nodeName.defaultProps;if(void 0!==i)for(var s in i)void 0===e[s]&&(e[s]=i[s]);return e}function q(t){var e=t.parentNode;e&&e.removeChild(t)}function j(t,e,i,s,a){if("className"===e&&(e="class"),"key"===e);else if("ref"===e)L(i,null),L(s,t);else if("class"!==e||a)if("style"===e){if(s&&"string"!=typeof s&&"string"!=typeof i||(t.style.cssText=s||""),s&&"object"==typeof s){if("string"!=typeof i)for(var n in i)n in s||(t.style[n]="");for(var n in s)t.style[n]="number"==typeof s[n]&&!1===U.test(n)?s[n]+"px":s[n]}}else if("dangerouslySetInnerHTML"===e)s&&(t.innerHTML=s.__html||"");else if("o"==e[0]&&"n"==e[1]){var r=e!==(e=e.replace(/Capture$/,""));e=e.toLowerCase().substring(2),s?i||t.addEventListener(e,X,r):t.removeEventListener(e,X,r),(t._listeners||(t._listeners={}))[e]=s}else if("list"!==e&&"type"!==e&&!a&&e in t){try{t[e]=null==s?"":s}catch(t){}null!=s&&!1!==s||"spellcheck"==e||t.removeAttribute(e)}else{var o=a&&e!==(e=e.replace(/^xlink:?/,""));null==s||!1===s?o?t.removeAttributeNS("http://www.w3.org/1999/xlink",e.toLowerCase()):t.removeAttribute(e):"function"!=typeof s&&(o?t.setAttributeNS("http://www.w3.org/1999/xlink",e.toLowerCase(),s):t.setAttribute(e,s))}else t.className=s||""}function X(t){return this._listeners[t.type](t)}var Q=[],$=0,Y=!1,K=!1;function J(){for(var t;t=Q.shift();)t.componentDidMount&&t.componentDidMount()}function Z(t,e,i,s,a,n){$++||(Y=null!=a&&void 0!==a.ownerSVGElement,K=null!=t&&!("__preactattr_"in t));var r=tt(t,e,i,s,n);return a&&r.parentNode!==a&&a.appendChild(r),--$||(K=!1,n||J()),r}function tt(t,e,i,s,a){var n=t,r=Y;if(null!=e&&"boolean"!=typeof e||(e=""),"string"==typeof e||"number"==typeof e)return t&&void 0!==t.splitText&&t.parentNode&&(!t._component||a)?t.nodeValue!=e&&(t.nodeValue=e):(n=document.createTextNode(e),t&&(t.parentNode&&t.parentNode.replaceChild(n,t),et(t,!0))),n.__preactattr_=!0,n;var o,l,h=e.nodeName;if("function"==typeof h)return function(t,e,i,s){var a=t&&t._component,n=a,r=t,o=a&&t._componentConstructor===e.nodeName,l=o,h=V(e);for(;a&&!l&&(a=a._parentComponent);)l=a.constructor===e.nodeName;a&&l&&(!s||a._component)?(rt(a,h,3,i,s),t=a.base):(n&&!o&&(lt(n),t=r=null),a=at(e.nodeName,h,i),t&&!a.nextBase&&(a.nextBase=t,r=null),rt(a,h,1,i,s),t=a.base,r&&t!==r&&(r._component=null,et(r,!1)));return t}(t,e,i,s);if(Y="svg"===h||"foreignObject"!==h&&Y,h=String(h),(!t||!H(t,h))&&(o=h,(l=Y?document.createElementNS("http://www.w3.org/2000/svg",o):document.createElement(o)).normalizedNodeName=o,n=l,t)){for(;t.firstChild;)n.appendChild(t.firstChild);t.parentNode&&t.parentNode.replaceChild(n,t),et(t,!0)}var c=n.firstChild,u=n.__preactattr_,d=e.children;if(null==u){u=n.__preactattr_={};for(var m=n.attributes,p=m.length;p--;)u[m[p].name]=m[p].value}return!K&&d&&1===d.length&&"string"==typeof d[0]&&null!=c&&void 0!==c.splitText&&null==c.nextSibling?c.nodeValue!=d[0]&&(c.nodeValue=d[0]):(d&&d.length||null!=c)&&function(t,e,i,s,a){var n,r,o,l,h,c=t.childNodes,u=[],d={},m=0,p=0,g=c.length,f=0,v=e?e.length:0;if(0!==g)for(var y=0;y<g;y++){var S=c[y],b=S.__preactattr_,C=v&&b?S._component?S._component.__key:b.key:null;null!=C?(m++,d[C]=S):(b||(void 0!==S.splitText?!a||S.nodeValue.trim():a))&&(u[f++]=S)}if(0!==v)for(var y=0;y<v;y++){l=e[y],h=null;var C=l.key;if(null!=C)m&&void 0!==d[C]&&(h=d[C],d[C]=void 0,m--);else if(p<f)for(n=p;n<f;n++)if(void 0!==u[n]&&(P=r=u[n],w=a,"string"==typeof(x=l)||"number"==typeof x?void 0!==P.splitText:"string"==typeof x.nodeName?!P._componentConstructor&&H(P,x.nodeName):w||P._componentConstructor===x.nodeName)){h=r,u[n]=void 0,n===f-1&&f--,n===p&&p++;break}h=tt(h,l,i,s),o=c[y],h&&h!==t&&h!==o&&(null==o?t.appendChild(h):h===o.nextSibling?q(o):t.insertBefore(h,o))}var P,x,w;if(m)for(var y in d)void 0!==d[y]&&et(d[y],!1);for(;p<=f;)void 0!==(h=u[f--])&&et(h,!1)}(n,d,i,s,K||null!=u.dangerouslySetInnerHTML),function(t,e,i){var s;for(s in i)e&&null!=e[s]||null==i[s]||j(t,s,i[s],i[s]=void 0,Y);for(s in e)"children"===s||"innerHTML"===s||s in i&&e[s]===("value"===s||"checked"===s?t[s]:i[s])||j(t,s,i[s],i[s]=e[s],Y)}(n,e.attributes,u),Y=r,n}function et(t,e){var i=t._component;i?lt(i):(null!=t.__preactattr_&&L(t.__preactattr_.ref,null),!1!==e&&null!=t.__preactattr_||q(t),it(t))}function it(t){for(t=t.lastChild;t;){var e=t.previousSibling;et(t,!0),t=e}}var st=[];function at(t,e,i){var s,a=st.length;for(t.prototype&&t.prototype.render?(s=new t(e,i),ht.call(s,e,i)):((s=new ht(e,i)).constructor=t,s.render=nt);a--;)if(st[a].constructor===t)return s.nextBase=st[a].nextBase,st.splice(a,1),s;return s}function nt(t,e,i){return this.constructor(t,i)}function rt(t,e,i,s,a){t._disable||(t._disable=!0,t.__ref=e.ref,t.__key=e.key,delete e.ref,delete e.key,void 0===t.constructor.getDerivedStateFromProps&&(!t.base||a?t.componentWillMount&&t.componentWillMount():t.componentWillReceiveProps&&t.componentWillReceiveProps(e,s)),s&&s!==t.context&&(t.prevContext||(t.prevContext=t.context),t.context=s),t.prevProps||(t.prevProps=t.props),t.props=e,t._disable=!1,0!==i&&(1!==i&&!1===I.syncComponentUpdates&&t.base?W(t):ot(t,1,a)),L(t.__ref,t))}function ot(t,e,i,s){if(!t._disable){var a,n,r,o=t.props,l=t.state,h=t.context,c=t.prevProps||o,u=t.prevState||l,d=t.prevContext||h,m=t.base,p=t.nextBase,g=m||p,f=t._component,v=!1,y=d;if(t.constructor.getDerivedStateFromProps&&(l=O(O({},l),t.constructor.getDerivedStateFromProps(o,l)),t.state=l),m&&(t.props=c,t.state=u,t.context=d,2!==e&&t.shouldComponentUpdate&&!1===t.shouldComponentUpdate(o,l,h)?v=!0:t.componentWillUpdate&&t.componentWillUpdate(o,l,h),t.props=o,t.state=l,t.context=h),t.prevProps=t.prevState=t.prevContext=t.nextBase=null,t._dirty=!1,!v){a=t.render(o,l,h),t.getChildContext&&(h=O(O({},h),t.getChildContext())),m&&t.getSnapshotBeforeUpdate&&(y=t.getSnapshotBeforeUpdate(c,u));var S,b,C=a&&a.nodeName;if("function"==typeof C){var P=V(a);(n=f)&&n.constructor===C&&P.key==n.__key?rt(n,P,1,h,!1):(S=n,t._component=n=at(C,P,h),n.nextBase=n.nextBase||p,n._parentComponent=t,rt(n,P,0,h,!1),ot(n,1,i,!0)),b=n.base}else r=g,(S=f)&&(r=t._component=null),(g||1===e)&&(r&&(r._component=null),b=Z(r,a,h,i||!m,g&&g.parentNode,!0));if(g&&b!==g&&n!==f){var x=g.parentNode;x&&b!==x&&(x.replaceChild(b,g),S||(g._component=null,et(g,!1)))}if(S&&lt(S),t.base=b,b&&!s){for(var w=t,k=t;k=k._parentComponent;)(w=k).base=b;b._component=w,b._componentConstructor=w.constructor}}for(!m||i?Q.push(t):v||t.componentDidUpdate&&t.componentDidUpdate(c,u,y);t._renderCallbacks.length;)t._renderCallbacks.pop().call(t);$||s||J()}}function lt(t){var e=t.base;t._disable=!0,t.componentWillUnmount&&t.componentWillUnmount(),t.base=null;var i=t._component;i?lt(i):e&&(null!=e.__preactattr_&&L(e.__preactattr_.ref,null),t.nextBase=e,q(e),st.push(t),it(e)),L(t.__ref,null)}function ht(t,e){this._dirty=!0,this.context=e,this.props=t,this.state=this.state||{},this._renderCallbacks=[]}function ct(){return R("div",{id:"help"},R("h3",null,"This is a prototype of a browser XCOM-like game."),R("p",null,"Currently it only has three unit types, no complex moves like overwatch, and only one map, but it will grow. It's already fully playable and closely matches XCOM conventions. Left click on your",R("span",{style:"color:blue"},"(blue)"),' units to select, click on empty space to move or on enemy to fire. Right click to deselect. Each unit has two action points (hence the game\'s name), shown as "horns". And some Hit Points, shown as the "beard". Units, naturally, die when out of HP, but can replenish HPs with "*" pickups. When next to cover (black or dashed squares), unit is protected by it on respective side and can "peek" out of it to shoot or, sadly, be shot at, just like in XCOM. Black squares are high cover, granting 40% defence and blocking vision. Dashed squares are low cover, giving only 20$ defence and no LOS obsruction.'),R("p",null,"When you hover the mouse over the square, you can see what is visible from it, and which enemies are flanked from (i.e. have no cover, marked"," ",R("span",{style:"background:#8f8"},"green"),"), or",R("span",{style:"background:#f88"},"flanking")," this square, or",R("span",{style:"background:#ff8;"},"both"),"."),R("p",null,'You can play against AI, it\'s a default mode. AI is quite competent, seeking cover and trying to flank you when possible. Also you can switch to 2 player mode, or even AI vs AI. Difference, basically, is that when you press "End turn", AI will make moves, depending on mode, for none, one or both sides if they have APs remained.'),R("p",null,'Even more, you can play on your own map! Just switch to Edit mode, and edit text field. # is high cover, + is low cover, G, A, S are blue units and g, a, s are red units. Note that map borders should always be high cover. Don\'t forget to press "Apply" when you done.'))}O(ht.prototype,{setState:function(t,e){this.prevState||(this.prevState=this.state),this.state=O(O({},this.state),"function"==typeof t?t(this.state,this.props):t),e&&this._renderCallbacks.push(e),W(this)},forceUpdate:function(t){t&&this._renderCallbacks.push(t),ot(this,2)},render:function(){}});var ut=Object.freeze({Sharpshooter:"\nHits accurately and hard at long range, regardless of target's armor.\nHas extra defence, making him nearly untouchable when in cover. \nPretty helpess up close and has low HP.\n",Assault:"\nPsycho with a shotgun. \nFast and even has a bit of armor to survive close quater fight a bit longer.\nCan deal a lot of damage, but only up close.\n",Gunner:"\nEffective in any range and has extra hp.\nQuite slow.\n"});let dt=!1;class mt extends ht{constructor(){super(...arguments),this.state={campaign:null,campaignInd:-1}}render(){return R("div",{class:"new-game row"},R("div",null,R("h4",null,"Campaigns"),this.props.campaigns.map((t,e)=>R("div",null,R("button",{class:e==this.state.campaignInd?"long pressed":"long",onClick:()=>this.selectCampaign(e)},0==t.search(/[0-9]{13}/)?t.substr(M.timeStampLength):t)))),R("div",null,this.state.campaign&&[R("h4",null,"Scenarios"),this.state.campaign.stages.map((t,e)=>R("div",null,R("button",{class:"long",onClick:()=>this.startStage(e)},t.name)))]))}selectCampaign(t){this.setState({campaign:M.campaignById(this.props.campaigns[t]),campaignInd:t})}startStage(t){this.props.startStage(this.state.campaign,this.state.campaign.stages[t])}}let pt=t=>{let e=!1;return R("div",{class:"save"},R("button",{onClick:t.save},"Save Game"),t.saves.sort().reverse().concat([null],t.campaigns.sort().reverse()).map(i=>i?R("div",{class:"save-row"},R("button",{class:"short",onClick:()=>t.del(i)},"Del")," ",new Date(+i.substr(0,M.timeStampLength)).toLocaleString(),R("input",{class:"save-name",disabled:e,onChange:e=>t.changeName(i,e.target.value),value:i.substr(M.timeStampLength)}),R("button",{onClick:()=>t.load(i)},"Load")):(e=!0,[R("h4",null,"Custom Campaigns"),t.saveCampaign&&R("button",{onClick:t.saveCampaign},"Save Campaign")])))};class gt extends ht{constructor(t){super(t),this.state={aiSides:2,activeTeam:null,page:"play",game:void 0,stageEdit:"",modCampaign:!0,modState:!0,saves:[],campaigns:[],unitInfo:null,chosen:null,aiTurn:!1,tooltipText:null,tooltipAt:null},this.canvas={},this.tooltip={},this.updateUI=(t=>{this.setState(t)}),document.addEventListener("keydown",t=>{switch(t.code){case"Escape":"menu"==this.page?this.setPage("play"):this.setPage("menu");break;case"Tab":this.game.chooseNext();break;case"KeyS":t.shiftKey&&this.setPage("saves")}})}get game(){return this.state.game}get page(){return this.state.page}gameUpdated(t){this.setState({game:t})}updateSaves(){let t=[],e=[];for(let i in localStorage){let s=i.substr(0,M.savePrefixLength);s==M.savePrefix&&t.push(i.substr(M.savePrefixLength)),s==M.campaignPrefix&&e.push(i.substr(M.savePrefixLength))}this.setState({saves:t,campaigns:e})}updateStageEdit(){this.setState({stageEdit:this.game.serialize({campaign:this.state.modCampaign,state:this.state.modState})})}setPage(t){"edit"==this.state.page&&this.state.stageEdit&&this.game.init(this.state.stageEdit),this.setState({page:t}),"edit"==t&&this.updateStageEdit(),"play"!=t&&(document.body.style.cursor="default")}cancelEdit(){this.setState({stageEdit:null}),this.setPage("menu")}endTurn(){this.game.endTurn(this.state.aiSides)}componentDidMount(){this.gameUpdated(new M(this.updateUI)),this.updateSaves();let t=this.canvas.current;!function(t,e){let i=0;e.addEventListener("mouseup",t=>{i=0}),e.addEventListener("mousedown",e=>{0==e.button&&t.game.click(e.offsetX,e.offsetY),2==e.button&&t.game.cancel(),"play"==t.state.page&&(3==e.button&&("#prev"==location.hash?history.forward():history.pushState({},document.title,"#prev"),t.game.chooseNext()),4==e.button&&t.game.chooseNext(-1))}),e.addEventListener("mousemove",e=>{6&e.buttons&&++i>=3&&t.game.drag(e.movementX,e.movementY),t.game.hover(e.offsetX,e.offsetY)}),e.addEventListener("mouseleave",e=>{t.game.hover()}),e.addEventListener("mouseenter",t=>{}),e.addEventListener("contextmenu",function(t){t.preventDefault()},!1)}(this,t),this.game.setCanvas(t),window.onresize=(()=>{this.game.renderer.resize()}),function t(e){requestAnimationFrame(i=>{e(i),t(e)})}(t=>{!this.game||dt||this.game.over()||this.game.update(t)})}displayIfPage(t){return this.state.page==t?"display:flex":"display:none"}toggleAI(t){let e=this.state.aiSides^1<<t;this.setState({aiSides:e}),this.game.setAiSides(e)}topButtons(){return"play"==this.state.page?[["AI",()=>this.toggleAI(0)],["AI",()=>this.toggleAI(1)],[void 0,void 0],["Menu","menu"]]:[["New Game","new-game"],["Saves","saves"],["Settings","settings"],["Editor","edit"],["Help","help"],[void 0,void 0],["Continue","play"]]}saveCampaign(){let t=this.state.game.serialize({campaign:!0,state:!1}),e=(new Date).getTime()+this.state.game.campaign.name;localStorage.setItem(M.campaignPrefix+e,t),this.updateSaves()}saveGame(){let t=this.state.game.serialize(),e=(new Date).getTime()+this.state.game.campaign.name+": "+this.state.game.stage.name;localStorage.setItem(M.savePrefix+e,t),this.updateSaves()}delGame(t){localStorage.removeItem(M.savePrefix+t),localStorage.removeItem(M.campaignPrefix+t),this.updateSaves()}loadGame(t){let e=localStorage.getItem(M.savePrefix+t);e?this.game.init(e):(e=localStorage.getItem(M.campaignPrefix+t),this.game.init(e,!1)),this.setPage("play")}changeGameName(t,e){let i=M.savePrefix+(new Date).getTime()+e,s=M.savePrefix+t;localStorage[i]||i==s||(localStorage.setItem(i,localStorage[s]),localStorage.removeItem(s),this.updateSaves())}startStage(t,e){this.game.init2(t,e),this.game.makeNotCustom(),this.setPage("play")}renderPage(){switch(this.state.page){case"help":return R(ct,null);case"saves":return R(pt,{saves:this.state.saves,campaigns:this.state.campaigns,saveCampaign:this.game.customCampaign&&this.saveCampaign,save:this.saveGame,load:this.loadGame,del:this.delGame,changeName:this.changeGameName});case"new-game":return R(mt,{campaigns:M.allCampaignIds(),startStage:(t,e)=>this.startStage(t,e)});default:return R("div",null)}}toggleModCampaign(){this.setState({modCampaign:!this.state.modCampaign}),this.updateStageEdit()}toggleModState(){this.setState({modState:!this.state.modState}),this.updateStageEdit()}sideButtonText(t){let e=R("span",null,this.state.aiSides&1<<t?"AI":"Player");return this.state.activeTeam&&this.state.activeTeam.faction==t&&(e=R("u",null,e)),e}render(){let t=this.state,e=t.page;return R("div",null,R("div",{class:"center-screen",style:this.displayIfPage("play")},R("canvas",{ref:this.canvas,id:"main"})),R("div",{class:"center-horisontal"},R("div",{id:"editor",style:this.displayIfPage("edit")},R("textarea",{onChange:(i=this,s="stageEdit",n=s.split("."),r=i.__lsc||(i.__lsc={}),r[s+a]||(r[s+a]=function(t){for(var e=t&&t.target||this,s={},r=s,o="string"==typeof a?function(t,e,i,s){for(s=0,e=e.split?e.split("."):e;t&&s<e.length;)t=t[e[s++]];return void 0===t?i:t}(t,a):e.nodeName?e.type.match(/^che|rad/)?e.checked:e.value:t,l=0;l<n.length-1;l++)r=r[n[l]]||(r[n[l]]=!l&&i.state[n[l]]||{});r[n[l]]=o,i.setState(s)})),cols:100,rows:40,value:this.state.stageEdit,id:"edit-area"}),R("div",{class:"row"},R("label",null,R("input",{type:"checkbox",checked:t.modCampaign,onChange:this.toggleModCampaign}),"Modify Campaign"),R("label",null,R("input",{type:"checkbox",checked:t.modState,onChange:this.toggleModState}),"Modify State"),R("span",{class:"flex-spacer"}),R("button",{id:"endb",onClick:t=>this.cancelEdit()},"Cancel"))),[this.renderPage()]),R("div",{class:"top-buttons row"},this.topButtons().map(([t,i],s)=>t?R("button",{class:"medium"+("play"==e&&s<=2?" side"+s:"")+(e==i?" pressed":""),onClick:t=>i instanceof Function?i():this.setPage(i)},"play"==e&&s<=2?this.sideButtonText(s):t):R("span",{class:"flex-spacer"}))),t.unitInfo&&"play"==e&&R(ft,{unit:t.unitInfo,chosen:this.state.chosen}),R("div",{class:"bottom-buttons row"},R("span",{class:"flex-spacer"}),"play"==e&&!t.aiTurn&&R("button",{id:"endb",onClick:t=>this.endTurn()},"End Turn")),R("div",{id:"tooltip",style:t.tooltipAt?`display:block; left:${t.tooltipAt[0]+30+this.canvas.current.offsetLeft}; top:${t.tooltipAt[1]}`:"display:none"},t.tooltipText));var i,s,a,n,r}}e([o],gt.prototype,"saveCampaign",null),e([o],gt.prototype,"saveGame",null),e([o],gt.prototype,"delGame",null),e([o],gt.prototype,"loadGame",null),e([o],gt.prototype,"changeGameName",null),e([o],gt.prototype,"toggleModCampaign",null),e([o],gt.prototype,"toggleModState",null);let ft=({unit:t,chosen:e})=>{let i={},s=0;return t&&e&&t!=e&&(s=e.hitChance(t.cell,t,!1,i)),R("div",{id:"unitInfo"},t.name.toUpperCase()," ",R("b",null,t.hp),"HP ",R("b",null,t.ap),"AP"," ",R("b",null,t.stress),"SP",R("br",null),"velocity",vt(t.velocity)," focus",vt(t.focus),R("br",null),s&&R("div",null,"Hit Chance: ",R("b",null,s),Object.keys(i).filter(t=>i[t]).map(t=>R("span",{class:"nobr"}," ",t,R("b",null,function(t){return(t>0?"+":"")+t}(i[t]))))),ut[t.name])};function vt(t){let e=Math.atan2(t[1],t[0])/Math.PI*180,i=Math.round(u(t));return R("span",null,R("svg",{width:"10px",height:"10px"},R("path",{d:"M5 5 l 0 -5 l 5 5 l -5 5 l 0 -4 l -5 0 l 0 -2 l 5 0 ",transform:`rotate(${e} 5 5)`})),R("b",null,i))}return window.onload=function(){var t,e,i;t=R(gt,null),e=document.body,Z(i,t,{},!1,e,!1)},t.mouseAt=void 0,t}({});
+(function () {
+	'use strict';
+
+	var VNode = function VNode() {};
+
+	var options = {};
+
+	var stack = [];
+
+	var EMPTY_CHILDREN = [];
+
+	function h(nodeName, attributes) {
+		var children = EMPTY_CHILDREN,
+		    lastSimple,
+		    child,
+		    simple,
+		    i;
+		for (i = arguments.length; i-- > 2;) {
+			stack.push(arguments[i]);
+		}
+		if (attributes && attributes.children != null) {
+			if (!stack.length) stack.push(attributes.children);
+			delete attributes.children;
+		}
+		while (stack.length) {
+			if ((child = stack.pop()) && child.pop !== undefined) {
+				for (i = child.length; i--;) {
+					stack.push(child[i]);
+				}
+			} else {
+				if (typeof child === 'boolean') child = null;
+
+				if (simple = typeof nodeName !== 'function') {
+					if (child == null) child = '';else if (typeof child === 'number') child = String(child);else if (typeof child !== 'string') simple = false;
+				}
+
+				if (simple && lastSimple) {
+					children[children.length - 1] += child;
+				} else if (children === EMPTY_CHILDREN) {
+					children = [child];
+				} else {
+					children.push(child);
+				}
+
+				lastSimple = simple;
+			}
+		}
+
+		var p = new VNode();
+		p.nodeName = nodeName;
+		p.children = children;
+		p.attributes = attributes == null ? undefined : attributes;
+		p.key = attributes == null ? undefined : attributes.key;
+
+		return p;
+	}
+
+	function extend(obj, props) {
+	  for (var i in props) {
+	    obj[i] = props[i];
+	  }return obj;
+	}
+
+	function applyRef(ref, value) {
+	  if (ref) {
+	    if (typeof ref == 'function') ref(value);else ref.current = value;
+	  }
+	}
+
+	var defer = typeof Promise == 'function' ? Promise.resolve().then.bind(Promise.resolve()) : setTimeout;
+
+	var IS_NON_DIMENSIONAL = /acit|ex(?:s|g|n|p|$)|rph|ows|mnc|ntw|ine[ch]|zoo|^ord/i;
+
+	var items = [];
+
+	function enqueueRender(component) {
+		if (!component._dirty && (component._dirty = true) && items.push(component) == 1) {
+			( defer)(rerender);
+		}
+	}
+
+	function rerender() {
+		var p;
+		while (p = items.pop()) {
+			if (p._dirty) renderComponent(p);
+		}
+	}
+
+	function isSameNodeType(node, vnode, hydrating) {
+		if (typeof vnode === 'string' || typeof vnode === 'number') {
+			return node.splitText !== undefined;
+		}
+		if (typeof vnode.nodeName === 'string') {
+			return !node._componentConstructor && isNamedNode(node, vnode.nodeName);
+		}
+		return hydrating || node._componentConstructor === vnode.nodeName;
+	}
+
+	function isNamedNode(node, nodeName) {
+		return node.normalizedNodeName === nodeName || node.nodeName.toLowerCase() === nodeName.toLowerCase();
+	}
+
+	function getNodeProps(vnode) {
+		var props = extend({}, vnode.attributes);
+		props.children = vnode.children;
+
+		var defaultProps = vnode.nodeName.defaultProps;
+		if (defaultProps !== undefined) {
+			for (var i in defaultProps) {
+				if (props[i] === undefined) {
+					props[i] = defaultProps[i];
+				}
+			}
+		}
+
+		return props;
+	}
+
+	function createNode(nodeName, isSvg) {
+		var node = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', nodeName) : document.createElement(nodeName);
+		node.normalizedNodeName = nodeName;
+		return node;
+	}
+
+	function removeNode(node) {
+		var parentNode = node.parentNode;
+		if (parentNode) parentNode.removeChild(node);
+	}
+
+	function setAccessor(node, name, old, value, isSvg) {
+		if (name === 'className') name = 'class';
+
+		if (name === 'key') ; else if (name === 'ref') {
+			applyRef(old, null);
+			applyRef(value, node);
+		} else if (name === 'class' && !isSvg) {
+			node.className = value || '';
+		} else if (name === 'style') {
+			if (!value || typeof value === 'string' || typeof old === 'string') {
+				node.style.cssText = value || '';
+			}
+			if (value && typeof value === 'object') {
+				if (typeof old !== 'string') {
+					for (var i in old) {
+						if (!(i in value)) node.style[i] = '';
+					}
+				}
+				for (var i in value) {
+					node.style[i] = typeof value[i] === 'number' && IS_NON_DIMENSIONAL.test(i) === false ? value[i] + 'px' : value[i];
+				}
+			}
+		} else if (name === 'dangerouslySetInnerHTML') {
+			if (value) node.innerHTML = value.__html || '';
+		} else if (name[0] == 'o' && name[1] == 'n') {
+			var useCapture = name !== (name = name.replace(/Capture$/, ''));
+			name = name.toLowerCase().substring(2);
+			if (value) {
+				if (!old) node.addEventListener(name, eventProxy, useCapture);
+			} else {
+				node.removeEventListener(name, eventProxy, useCapture);
+			}
+			(node._listeners || (node._listeners = {}))[name] = value;
+		} else if (name !== 'list' && name !== 'type' && !isSvg && name in node) {
+			try {
+				node[name] = value == null ? '' : value;
+			} catch (e) {}
+			if ((value == null || value === false) && name != 'spellcheck') node.removeAttribute(name);
+		} else {
+			var ns = isSvg && name !== (name = name.replace(/^xlink:?/, ''));
+
+			if (value == null || value === false) {
+				if (ns) node.removeAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase());else node.removeAttribute(name);
+			} else if (typeof value !== 'function') {
+				if (ns) node.setAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase(), value);else node.setAttribute(name, value);
+			}
+		}
+	}
+
+	function eventProxy(e) {
+		return this._listeners[e.type]( e);
+	}
+
+	var mounts = [];
+
+	var diffLevel = 0;
+
+	var isSvgMode = false;
+
+	var hydrating = false;
+
+	function flushMounts() {
+		var c;
+		while (c = mounts.shift()) {
+			if (c.componentDidMount) c.componentDidMount();
+		}
+	}
+
+	function diff(dom, vnode, context, mountAll, parent, componentRoot) {
+		if (!diffLevel++) {
+			isSvgMode = parent != null && parent.ownerSVGElement !== undefined;
+
+			hydrating = dom != null && !('__preactattr_' in dom);
+		}
+
+		var ret = idiff(dom, vnode, context, mountAll, componentRoot);
+
+		if (parent && ret.parentNode !== parent) parent.appendChild(ret);
+
+		if (! --diffLevel) {
+			hydrating = false;
+
+			if (!componentRoot) flushMounts();
+		}
+
+		return ret;
+	}
+
+	function idiff(dom, vnode, context, mountAll, componentRoot) {
+		var out = dom,
+		    prevSvgMode = isSvgMode;
+
+		if (vnode == null || typeof vnode === 'boolean') vnode = '';
+
+		if (typeof vnode === 'string' || typeof vnode === 'number') {
+			if (dom && dom.splitText !== undefined && dom.parentNode && (!dom._component || componentRoot)) {
+				if (dom.nodeValue != vnode) {
+					dom.nodeValue = vnode;
+				}
+			} else {
+				out = document.createTextNode(vnode);
+				if (dom) {
+					if (dom.parentNode) dom.parentNode.replaceChild(out, dom);
+					recollectNodeTree(dom, true);
+				}
+			}
+
+			out['__preactattr_'] = true;
+
+			return out;
+		}
+
+		var vnodeName = vnode.nodeName;
+		if (typeof vnodeName === 'function') {
+			return buildComponentFromVNode(dom, vnode, context, mountAll);
+		}
+
+		isSvgMode = vnodeName === 'svg' ? true : vnodeName === 'foreignObject' ? false : isSvgMode;
+
+		vnodeName = String(vnodeName);
+		if (!dom || !isNamedNode(dom, vnodeName)) {
+			out = createNode(vnodeName, isSvgMode);
+
+			if (dom) {
+				while (dom.firstChild) {
+					out.appendChild(dom.firstChild);
+				}
+				if (dom.parentNode) dom.parentNode.replaceChild(out, dom);
+
+				recollectNodeTree(dom, true);
+			}
+		}
+
+		var fc = out.firstChild,
+		    props = out['__preactattr_'],
+		    vchildren = vnode.children;
+
+		if (props == null) {
+			props = out['__preactattr_'] = {};
+			for (var a = out.attributes, i = a.length; i--;) {
+				props[a[i].name] = a[i].value;
+			}
+		}
+
+		if (!hydrating && vchildren && vchildren.length === 1 && typeof vchildren[0] === 'string' && fc != null && fc.splitText !== undefined && fc.nextSibling == null) {
+			if (fc.nodeValue != vchildren[0]) {
+				fc.nodeValue = vchildren[0];
+			}
+		} else if (vchildren && vchildren.length || fc != null) {
+				innerDiffNode(out, vchildren, context, mountAll, hydrating || props.dangerouslySetInnerHTML != null);
+			}
+
+		diffAttributes(out, vnode.attributes, props);
+
+		isSvgMode = prevSvgMode;
+
+		return out;
+	}
+
+	function innerDiffNode(dom, vchildren, context, mountAll, isHydrating) {
+		var originalChildren = dom.childNodes,
+		    children = [],
+		    keyed = {},
+		    keyedLen = 0,
+		    min = 0,
+		    len = originalChildren.length,
+		    childrenLen = 0,
+		    vlen = vchildren ? vchildren.length : 0,
+		    j,
+		    c,
+		    f,
+		    vchild,
+		    child;
+
+		if (len !== 0) {
+			for (var i = 0; i < len; i++) {
+				var _child = originalChildren[i],
+				    props = _child['__preactattr_'],
+				    key = vlen && props ? _child._component ? _child._component.__key : props.key : null;
+				if (key != null) {
+					keyedLen++;
+					keyed[key] = _child;
+				} else if (props || (_child.splitText !== undefined ? isHydrating ? _child.nodeValue.trim() : true : isHydrating)) {
+					children[childrenLen++] = _child;
+				}
+			}
+		}
+
+		if (vlen !== 0) {
+			for (var i = 0; i < vlen; i++) {
+				vchild = vchildren[i];
+				child = null;
+
+				var key = vchild.key;
+				if (key != null) {
+					if (keyedLen && keyed[key] !== undefined) {
+						child = keyed[key];
+						keyed[key] = undefined;
+						keyedLen--;
+					}
+				} else if (min < childrenLen) {
+						for (j = min; j < childrenLen; j++) {
+							if (children[j] !== undefined && isSameNodeType(c = children[j], vchild, isHydrating)) {
+								child = c;
+								children[j] = undefined;
+								if (j === childrenLen - 1) childrenLen--;
+								if (j === min) min++;
+								break;
+							}
+						}
+					}
+
+				child = idiff(child, vchild, context, mountAll);
+
+				f = originalChildren[i];
+				if (child && child !== dom && child !== f) {
+					if (f == null) {
+						dom.appendChild(child);
+					} else if (child === f.nextSibling) {
+						removeNode(f);
+					} else {
+						dom.insertBefore(child, f);
+					}
+				}
+			}
+		}
+
+		if (keyedLen) {
+			for (var i in keyed) {
+				if (keyed[i] !== undefined) recollectNodeTree(keyed[i], false);
+			}
+		}
+
+		while (min <= childrenLen) {
+			if ((child = children[childrenLen--]) !== undefined) recollectNodeTree(child, false);
+		}
+	}
+
+	function recollectNodeTree(node, unmountOnly) {
+		var component = node._component;
+		if (component) {
+			unmountComponent(component);
+		} else {
+			if (node['__preactattr_'] != null) applyRef(node['__preactattr_'].ref, null);
+
+			if (unmountOnly === false || node['__preactattr_'] == null) {
+				removeNode(node);
+			}
+
+			removeChildren(node);
+		}
+	}
+
+	function removeChildren(node) {
+		node = node.lastChild;
+		while (node) {
+			var next = node.previousSibling;
+			recollectNodeTree(node, true);
+			node = next;
+		}
+	}
+
+	function diffAttributes(dom, attrs, old) {
+		var name;
+
+		for (name in old) {
+			if (!(attrs && attrs[name] != null) && old[name] != null) {
+				setAccessor(dom, name, old[name], old[name] = undefined, isSvgMode);
+			}
+		}
+
+		for (name in attrs) {
+			if (name !== 'children' && name !== 'innerHTML' && (!(name in old) || attrs[name] !== (name === 'value' || name === 'checked' ? dom[name] : old[name]))) {
+				setAccessor(dom, name, old[name], old[name] = attrs[name], isSvgMode);
+			}
+		}
+	}
+
+	var recyclerComponents = [];
+
+	function createComponent(Ctor, props, context) {
+		var inst,
+		    i = recyclerComponents.length;
+
+		if (Ctor.prototype && Ctor.prototype.render) {
+			inst = new Ctor(props, context);
+			Component.call(inst, props, context);
+		} else {
+			inst = new Component(props, context);
+			inst.constructor = Ctor;
+			inst.render = doRender;
+		}
+
+		while (i--) {
+			if (recyclerComponents[i].constructor === Ctor) {
+				inst.nextBase = recyclerComponents[i].nextBase;
+				recyclerComponents.splice(i, 1);
+				return inst;
+			}
+		}
+
+		return inst;
+	}
+
+	function doRender(props, state, context) {
+		return this.constructor(props, context);
+	}
+
+	function setComponentProps(component, props, renderMode, context, mountAll) {
+		if (component._disable) return;
+		component._disable = true;
+
+		component.__ref = props.ref;
+		component.__key = props.key;
+		delete props.ref;
+		delete props.key;
+
+		if (typeof component.constructor.getDerivedStateFromProps === 'undefined') {
+			if (!component.base || mountAll) {
+				if (component.componentWillMount) component.componentWillMount();
+			} else if (component.componentWillReceiveProps) {
+				component.componentWillReceiveProps(props, context);
+			}
+		}
+
+		if (context && context !== component.context) {
+			if (!component.prevContext) component.prevContext = component.context;
+			component.context = context;
+		}
+
+		if (!component.prevProps) component.prevProps = component.props;
+		component.props = props;
+
+		component._disable = false;
+
+		if (renderMode !== 0) {
+			if (renderMode === 1 || options.syncComponentUpdates !== false || !component.base) {
+				renderComponent(component, 1, mountAll);
+			} else {
+				enqueueRender(component);
+			}
+		}
+
+		applyRef(component.__ref, component);
+	}
+
+	function renderComponent(component, renderMode, mountAll, isChild) {
+		if (component._disable) return;
+
+		var props = component.props,
+		    state = component.state,
+		    context = component.context,
+		    previousProps = component.prevProps || props,
+		    previousState = component.prevState || state,
+		    previousContext = component.prevContext || context,
+		    isUpdate = component.base,
+		    nextBase = component.nextBase,
+		    initialBase = isUpdate || nextBase,
+		    initialChildComponent = component._component,
+		    skip = false,
+		    snapshot = previousContext,
+		    rendered,
+		    inst,
+		    cbase;
+
+		if (component.constructor.getDerivedStateFromProps) {
+			state = extend(extend({}, state), component.constructor.getDerivedStateFromProps(props, state));
+			component.state = state;
+		}
+
+		if (isUpdate) {
+			component.props = previousProps;
+			component.state = previousState;
+			component.context = previousContext;
+			if (renderMode !== 2 && component.shouldComponentUpdate && component.shouldComponentUpdate(props, state, context) === false) {
+				skip = true;
+			} else if (component.componentWillUpdate) {
+				component.componentWillUpdate(props, state, context);
+			}
+			component.props = props;
+			component.state = state;
+			component.context = context;
+		}
+
+		component.prevProps = component.prevState = component.prevContext = component.nextBase = null;
+		component._dirty = false;
+
+		if (!skip) {
+			rendered = component.render(props, state, context);
+
+			if (component.getChildContext) {
+				context = extend(extend({}, context), component.getChildContext());
+			}
+
+			if (isUpdate && component.getSnapshotBeforeUpdate) {
+				snapshot = component.getSnapshotBeforeUpdate(previousProps, previousState);
+			}
+
+			var childComponent = rendered && rendered.nodeName,
+			    toUnmount,
+			    base;
+
+			if (typeof childComponent === 'function') {
+
+				var childProps = getNodeProps(rendered);
+				inst = initialChildComponent;
+
+				if (inst && inst.constructor === childComponent && childProps.key == inst.__key) {
+					setComponentProps(inst, childProps, 1, context, false);
+				} else {
+					toUnmount = inst;
+
+					component._component = inst = createComponent(childComponent, childProps, context);
+					inst.nextBase = inst.nextBase || nextBase;
+					inst._parentComponent = component;
+					setComponentProps(inst, childProps, 0, context, false);
+					renderComponent(inst, 1, mountAll, true);
+				}
+
+				base = inst.base;
+			} else {
+				cbase = initialBase;
+
+				toUnmount = initialChildComponent;
+				if (toUnmount) {
+					cbase = component._component = null;
+				}
+
+				if (initialBase || renderMode === 1) {
+					if (cbase) cbase._component = null;
+					base = diff(cbase, rendered, context, mountAll || !isUpdate, initialBase && initialBase.parentNode, true);
+				}
+			}
+
+			if (initialBase && base !== initialBase && inst !== initialChildComponent) {
+				var baseParent = initialBase.parentNode;
+				if (baseParent && base !== baseParent) {
+					baseParent.replaceChild(base, initialBase);
+
+					if (!toUnmount) {
+						initialBase._component = null;
+						recollectNodeTree(initialBase, false);
+					}
+				}
+			}
+
+			if (toUnmount) {
+				unmountComponent(toUnmount);
+			}
+
+			component.base = base;
+			if (base && !isChild) {
+				var componentRef = component,
+				    t = component;
+				while (t = t._parentComponent) {
+					(componentRef = t).base = base;
+				}
+				base._component = componentRef;
+				base._componentConstructor = componentRef.constructor;
+			}
+		}
+
+		if (!isUpdate || mountAll) {
+			mounts.push(component);
+		} else if (!skip) {
+
+			if (component.componentDidUpdate) {
+				component.componentDidUpdate(previousProps, previousState, snapshot);
+			}
+		}
+
+		while (component._renderCallbacks.length) {
+			component._renderCallbacks.pop().call(component);
+		}if (!diffLevel && !isChild) flushMounts();
+	}
+
+	function buildComponentFromVNode(dom, vnode, context, mountAll) {
+		var c = dom && dom._component,
+		    originalComponent = c,
+		    oldDom = dom,
+		    isDirectOwner = c && dom._componentConstructor === vnode.nodeName,
+		    isOwner = isDirectOwner,
+		    props = getNodeProps(vnode);
+		while (c && !isOwner && (c = c._parentComponent)) {
+			isOwner = c.constructor === vnode.nodeName;
+		}
+
+		if (c && isOwner && (!mountAll || c._component)) {
+			setComponentProps(c, props, 3, context, mountAll);
+			dom = c.base;
+		} else {
+			if (originalComponent && !isDirectOwner) {
+				unmountComponent(originalComponent);
+				dom = oldDom = null;
+			}
+
+			c = createComponent(vnode.nodeName, props, context);
+			if (dom && !c.nextBase) {
+				c.nextBase = dom;
+
+				oldDom = null;
+			}
+			setComponentProps(c, props, 1, context, mountAll);
+			dom = c.base;
+
+			if (oldDom && dom !== oldDom) {
+				oldDom._component = null;
+				recollectNodeTree(oldDom, false);
+			}
+		}
+
+		return dom;
+	}
+
+	function unmountComponent(component) {
+
+		var base = component.base;
+
+		component._disable = true;
+
+		if (component.componentWillUnmount) component.componentWillUnmount();
+
+		component.base = null;
+
+		var inner = component._component;
+		if (inner) {
+			unmountComponent(inner);
+		} else if (base) {
+			if (base['__preactattr_'] != null) applyRef(base['__preactattr_'].ref, null);
+
+			component.nextBase = base;
+
+			removeNode(base);
+			recyclerComponents.push(component);
+
+			removeChildren(base);
+		}
+
+		applyRef(component.__ref, null);
+	}
+
+	function Component(props, context) {
+		this._dirty = true;
+
+		this.context = context;
+
+		this.props = props;
+
+		this.state = this.state || {};
+
+		this._renderCallbacks = [];
+	}
+
+	extend(Component.prototype, {
+		setState: function setState(state, callback) {
+			if (!this.prevState) this.prevState = this.state;
+			this.state = extend(extend({}, this.state), typeof state === 'function' ? state(this.state, this.props) : state);
+			if (callback) this._renderCallbacks.push(callback);
+			enqueueRender(this);
+		},
+		forceUpdate: function forceUpdate(callback) {
+			if (callback) this._renderCallbacks.push(callback);
+			renderComponent(this, 2);
+		},
+		render: function render() {}
+	});
+
+	function render(vnode, parent, merge) {
+	  return diff(merge, vnode, {}, false, parent, false);
+	}
+
+	function createRef() {
+		return {};
+	}
+
+	/*! *****************************************************************************
+	Copyright (c) Microsoft Corporation. All rights reserved.
+	Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+	this file except in compliance with the License. You may obtain a copy of the
+	License at http://www.apache.org/licenses/LICENSE-2.0
+
+	THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+	KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+	WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+	MERCHANTABLITY OR NON-INFRINGEMENT.
+
+	See the Apache Version 2.0 License for specific language governing permissions
+	and limitations under the License.
+	***************************************************************************** */
+
+	function __decorate(decorators, target, key, desc) {
+	    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+	    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+	    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+	    return c > 3 && r && Object.defineProperty(target, key, r), r;
+	}
+
+	function __awaiter(thisArg, _arguments, P, generator) {
+	    return new (P || (P = Promise))(function (resolve, reject) {
+	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+	        step((generator = generator.apply(thisArg, _arguments || [])).next());
+	    });
+	}
+
+	function min(list, fn) {
+	    let minV = Number.MAX_VALUE;
+	    let minI = -1;
+	    for (let i = 0; i < list.length; i++) {
+	        let v = fn(list[i]);
+	        if (minV > v) {
+	            minV = v;
+	            minI = i;
+	        }
+	    }
+	    if (minI >= 0)
+	        return { ind: minI, item: list[minI], val: minV };
+	}
+	function max(list, fn) {
+	    let r = min(list, t => -fn(t));
+	    if (!r)
+	        return;
+	    r.val = -r.val;
+	    return r;
+	}
+	function createCanvas(w, h) {
+	    const canvas = document.createElement("canvas");
+	    canvas.width = w;
+	    canvas.height = h;
+	    return canvas;
+	}
+	function canvasCache(size, draw) {
+	    const canvas = createCanvas(...size);
+	    const ctx = canvas.getContext("2d");
+	    ctx.lineWidth = 1;
+	    ctx.strokeStyle = "#000";
+	    draw(ctx);
+	    return canvas;
+	}
+	function random(seed) {
+	    seed = seed % 2147483647;
+	    if (seed <= 0)
+	        seed += 2147483646;
+	    return () => {
+	        return (seed = (seed * 16807) % 2147483647);
+	    };
+	}
+	function eachFrame(fun) {
+	    requestAnimationFrame(time => {
+	        fun(time);
+	        eachFrame(fun);
+	    });
+	}
+	function idiv(a, b) {
+	    return Math.floor(a / b);
+	}
+	function bind(target, name, descriptor) {
+	    return {
+	        get() {
+	            const bound = descriptor.value.bind(this);
+	            Object.defineProperty(this, name, {
+	                value: bound
+	            });
+	            return bound;
+	        }
+	    };
+	}
+	function parseWithNewLines(json) {
+	    if (!json)
+	        return null;
+	    let split = json.split('"');
+	    for (let i = 1; i < split.length; i += 2) {
+	        split[i] = split[i].replace(/\n/g, "\\n");
+	    }
+	    return JSON.parse(split.join('"'));
+	}
+	function signed(n) {
+	    return (n > 0 ? "+" : "") + n;
+	}
+	function svgImg(attrs, body) {
+	    return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>')`;
+	}
+
+	function round(v) {
+	    return [Math.round(v[0]), Math.round(v[1])];
+	}
+	function sum(a, b, m = 1) {
+	    return [a[0] + b[0] * m, a[1] + b[1] * m];
+	}
+	function sub(a, b) {
+	    return [a[0] - b[0], a[1] - b[1]];
+	}
+	function length(d) {
+	    return Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+	}
+	function norm(v, scale = 1) {
+	    let d = length(v) || 1;
+	    return [v[0] / d * scale, v[1] / d * scale];
+	}
+	function dist(a, b) {
+	    return length([a[0] - b[0], a[1] - b[1]]);
+	}
+	function dot(a, b) {
+	    return a[0] * b[0] + a[1] * b[1];
+	}
+	function det(a, b) {
+	    return a[0] * b[1] - a[1] * b[0];
+	}
+	function rot(v) {
+	    return [v[1], -v[0]];
+	}
+	function scale(v, n) {
+	    return [v[0] * n, v[1] * n];
+	}
+	function lerp(start, end, amt) {
+	    return [
+	        start[0] * (1 - amt) + amt * end[0],
+	        start[1] * (1 - amt) + amt * end[1]
+	    ];
+	}
+	function angleBetween(a, b) {
+	    return Math.atan2(det(a, b), dot(a, b));
+	}
+
+	//https://gist.github.com/as-f/59bb06ced7e740e11ec7dda9d82717f6#file-shadowcasting-js
+	function shadowcast(cx, cy, transparent, reveal) {
+	    /**
+	     * Scan one row of one octant.
+	     * @param y - distance from the row scanned to the center
+	     * @param start - starting slope
+	     * @param end - ending slope
+	     * @param transform - describes the transfrom to apply on x and y; determines the octant
+	     */
+	    var scan = function (y, start, end, transform) {
+	        if (start >= end) {
+	            return;
+	        }
+	        var xmin = Math.round((y - 0.5) * start);
+	        var xmax = Math.ceil((y + 0.5) * end - 0.5);
+	        for (var x = xmin; x <= xmax; x++) {
+	            var realx = cx + transform.xx * x + transform.xy * y;
+	            var realy = cy + transform.yx * x + transform.yy * y;
+	            if (transparent(realx, realy)) {
+	                if (x >= y * start && x <= y * end) {
+	                    reveal(realx, realy);
+	                }
+	            }
+	            else {
+	                if (x >= (y - 0.5) * start && x - 0.5 <= y * end) {
+	                    reveal(realx, realy);
+	                }
+	                scan(y + 1, start, (x - 0.5) / y, transform);
+	                start = (x + 0.5) / y;
+	                if (start >= end) {
+	                    return;
+	                }
+	            }
+	        }
+	        scan(y + 1, start, end, transform);
+	    };
+	    // An array of transforms, each corresponding to one octant.
+	    var transforms = [
+	        { xx: 1, xy: 0, yx: 0, yy: 1 },
+	        { xx: 1, xy: 0, yx: 0, yy: -1 },
+	        { xx: -1, xy: 0, yx: 0, yy: 1 },
+	        { xx: -1, xy: 0, yx: 0, yy: -1 },
+	        { xx: 0, xy: 1, yx: 1, yy: 0 },
+	        { xx: 0, xy: 1, yx: -1, yy: 0 },
+	        { xx: 0, xy: -1, yx: 1, yy: 0 },
+	        { xx: 0, xy: -1, yx: -1, yy: 0 }
+	    ];
+	    reveal(cx, cy);
+	    // Scan each octant
+	    for (var i = 0; i < 8; i++) {
+	        scan(1, 0, 1, transforms[i]);
+	    }
+	}
+
+	class Item {
+	    constructor(type) {
+	        this.type = type;
+	    }
+	    serialize() {
+	        return this.type;
+	    }
+	    static deserialize(type) {
+	        return new Item(type);
+	    }
+	}
+	Item.MEDKIT = "medkit";
+
+	class Cell {
+	    constructor(terrain, cid, obstacle, unit) {
+	        this.terrain = terrain;
+	        this.cid = cid;
+	        this.obstacle = obstacle;
+	        this.unit = unit;
+	        this.rfov = new Set(); /* raw FOV, without XCOM tricks */
+	        this.xfov = new Set(); /* FOV with respect of peek-out */
+	        this.dfov = new Set(); /* Direct fov, withonly source stepping out. For ground attacks and overwatch */
+	        this.povs = [];
+	        this.peeked = [];
+	        this.items = [];
+	    }
+	    calculatePovAnCover() {
+	        if (this.obstacle)
+	            return;
+	        this.cover = this.terrain.obstacles(this.cid);
+	        this.calculatePovs();
+	    }
+	    calculateFov() {
+	        if (this.opaque)
+	            return;
+	        let t = this.terrain;
+	        let [x, y] = this.at;
+	        let visibility = new Set();
+	        shadowcast(x, y, (x, y) => !t.cellAt(x, y).opaque, (x, y) => {
+	            visibility.add(t.cid(x, y));
+	        });
+	        this.rfov = visibility;
+	    }
+	    calculateXFov() {
+	        let visibility = new Set();
+	        for (let p of this.povs) {
+	            for (let visible of p.rfov) {
+	                let visibleTile = this.terrain.cells[visible];
+	                for (let neighbor of visibleTile.peeked)
+	                    visibility.add(neighbor.cid);
+	            }
+	        }
+	        this.xfov = visibility;
+	    }
+	    calculateDFov() {
+	        let visibility = new Set();
+	        for (let p of this.povs) {
+	            for (let visible of p.rfov) {
+	                visibility.add(visible);
+	            }
+	        }
+	        this.dfov = visibility;
+	    }
+	    get at() {
+	        return this.terrain.fromCid(this.cid);
+	    }
+	    dist(other) {
+	        return dist(this.at, other.at);
+	    }
+	    seal() {
+	        this.obstacle = 2;
+	        delete this.unit;
+	        this.items = [];
+	    }
+	    get opaque() {
+	        return this.obstacle == 2;
+	    }
+	    get passable() {
+	        return this.obstacle < 2 && !this.hole;
+	    }
+	    get standable() {
+	        return this.obstacle == 0 && !this.hole && !this.unit;
+	    }
+	    calculatePovs() {
+	        this.povs = [];
+	        let t = this.terrain;
+	        let cid = this.cid;
+	        this.povs.push(this);
+	        for (let dir = 0; dir < 8; dir += 2) {
+	            let forward = cid + t.dir8Deltas[dir];
+	            if (!t.cells[forward].obstacle)
+	                continue;
+	            let left = [
+	                cid + t.dir8Deltas[(dir + 6) % 8],
+	                cid + t.dir8Deltas[(dir + 7) % 8]
+	            ];
+	            let right = [
+	                cid + t.dir8Deltas[(dir + 2) % 8],
+	                cid + t.dir8Deltas[(dir + 1) % 8]
+	            ];
+	            for (let side of [left, right]) {
+	                let peekable = t.cells[side[0]].standable && t.cells[side[1]].obstacle <= 1;
+	                if (peekable) {
+	                    this.povs.push(t.cells[side[0]]);
+	                }
+	            }
+	        }
+	        for (let c of this.povs) {
+	            c.peeked.push(this);
+	        }
+	    }
+	    serializable() {
+	        return this.items.length > 0;
+	    }
+	    serialize() {
+	        return { items: this.items.map(i => i.serialize()) };
+	    }
+	    deserialize(data) {
+	        for (let item of data.items) {
+	            this.addItem(Item.deserialize(item));
+	        }
+	    }
+	    addItem(item) {
+	        this.items.push(item);
+	    }
+	}
+
+	class Team {
+	    constructor(terrain, faction) {
+	        this.terrain = terrain;
+	        this.faction = faction;
+	        this.fov = new Set();
+	    }
+	    serialize() {
+	        return {
+	            units: this.units.map(u => u.serialize())
+	        };
+	    }
+	    calculate() {
+	        this.strength = [];
+	        this.weakness = [];
+	        this.distance = [];
+	        let t = this.terrain;
+	        this.fov.clear();
+	        for (let unit of this.units) {
+	            for (let cell of unit.cell.xfov)
+	                this.fov.add(cell);
+	        }
+	        let enemyTeam = this.terrain.teams[1 - this.faction];
+	        for (let cid of this.fov) {
+	            let cell = this.terrain.cells[cid];
+	            for (let enemy of enemyTeam.units) {
+	                let tcell = enemy.cell;
+	                let strength = (4 - t.cover(cell, tcell)) % 5;
+	                if (!(this.strength[cid] > strength))
+	                    this.strength[cid] = strength;
+	                let weakness = (4 - t.cover(tcell, cell)) % 5;
+	                if (!(this.weakness[cid] > weakness))
+	                    this.weakness[cid] = weakness;
+	                if (strength > 0 || weakness > 0) {
+	                    let distance = cell.dist(tcell);
+	                    if (!(this.distance[cid] <= distance))
+	                        this.distance[cid] = distance;
+	                }
+	            }
+	        }
+	    }
+	    think() {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            this.terrain.aiTurn = true;
+	            this.calculate();
+	            for (let unit of this.terrain.units) {
+	                if (unit.team == this && unit.alive) {
+	                    yield unit.think();
+	                }
+	            }
+	            this.terrain.aiTurn = false;
+	        });
+	    }
+	    endTurn() {
+	    }
+	    beginTurn() {
+	        for (let c of this.units) {
+	            c.ap = 2;
+	        }
+	        this.terrain.activeTeam = this;
+	    }
+	    get units() {
+	        return this.terrain.units.filter(c => c.team == this);
+	    }
+	    get enemy() {
+	        return this.terrain.teams[1 - this.faction];
+	    }
+	    get name() {
+	        return ["RED", "BLUE"][this.faction];
+	    }
+	    get color() {
+	        return ["RED", "BLUE"][this.faction];
+	    }
+	}
+	Team.BLUE = 0;
+	Team.RED = 1;
+
+	class Unit {
+	    constructor(cell, o) {
+	        this.cell = cell;
+	        this.speed = 5;
+	        this.maxHP = 10;
+	        this.hp = this.maxHP;
+	        this.ap = 2;
+	        this.exhaustion = 0;
+	        this.stress = 0;
+	        this.focus = [0, 0];
+	        this.velocity = [0, 0];
+	        this.armor = 0;
+	        this.sight = 20;
+	        this.def = 0;
+	        this.aggression = 0;
+	        this.name = "dude";
+	        this.symbol = "d";
+	        this.symbol = o.symbol.toLowerCase();
+	        cell.unit = this;
+	        let terrain = cell.terrain;
+	        this.terrain.units.push(this);
+	        let conf = terrain.campaign.units[this.symbol];
+	        Object.assign(this, conf);
+	        this.hp = this.maxHP;
+	        console.assert(conf);
+	        this.team =
+	            terrain.teams[o.symbol.toUpperCase() == o.symbol ? Team.BLUE : Team.RED];
+	        for (let key of Unit.saveFields) {
+	            if (key in o)
+	                this[key] = o[key];
+	        }
+	        this.gun = this.terrain.campaign.guns[conf.gun];
+	    }
+	    get terrain() {
+	        return this.cell.terrain;
+	    }
+	    get cid() {
+	        return this.cell.cid;
+	    }
+	    serialize() {
+	        return {
+	            symbol: this.symbol,
+	            hp: this.hp,
+	            ap: this.ap,
+	            cid: this.cid,
+	            exhaustion: this.exhaustion,
+	            stress: this.stress,
+	            focus: this.focus,
+	            velocity: this.velocity
+	        };
+	    }
+	    get blue() {
+	        return this.team == this.terrain.we;
+	    }
+	    pathTo(to) {
+	        let cid = to.cid;
+	        let path = [cid];
+	        while (true) {
+	            cid = this.dists[cid][1];
+	            if (cid < 0)
+	                break;
+	            path.push(cid);
+	        }
+	        return path.reverse().map(cid => this.terrain.cells[cid]);
+	    }
+	    get strokeColor() {
+	        return this.blue ? "#00a" : "#a00";
+	    }
+	    get x() {
+	        return this.cid % this.terrain.w;
+	    }
+	    get y() {
+	        return idiv(this.cid, this.terrain.w);
+	    }
+	    reachable(cell) {
+	        return this.apCost(cell) <= this.ap;
+	    }
+	    calculateDists() {
+	        this.dists = this.terrain.calcDists(this.cid);
+	    }
+	    calculate() {
+	        this.calculateDists();
+	    }
+	    cover(target) {
+	        return this.terrain.cover(this.cell, target);
+	    }
+	    get at() {
+	        return this.terrain.fromCid(this.cid);
+	    }
+	    apCost(cell) {
+	        if (!this.dists)
+	            return Number.MAX_VALUE;
+	        let l = this.dists[cell.cid][0];
+	        let moves = Math.ceil(l / this.speed);
+	        return moves;
+	    }
+	    canShoot() {
+	        return this.ap > 0;
+	    }
+	    perpendicularVelocity(target) {
+	        if (!this.moving)
+	            return 0;
+	        let dir = norm(sub(target, this.at));
+	        let p = det(dir, this.velocity);
+	        return p;
+	    }
+	    velocityAccuracyBonus(target) {
+	        return -Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+	    }
+	    velocityDefenceBonus(target) {
+	        return Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+	    }
+	    focusAccuracyBonus(target) {
+	        if (!this.focused)
+	            return 0;
+	        let angle = angleBetween(sub(target, this.at), this.focus);
+	        let bonus = 1 - (4 * Math.abs(angle)) / Math.PI;
+	        if (bonus < 0)
+	            bonus /= 2;
+	        return Math.round(bonus * length(this.focus));
+	    }
+	    focusDefenceBonus(target) {
+	        return this.focusAccuracyBonus(target);
+	    }
+	    hitChance(tcell, tunit, direct = false, bonuses) {
+	        if (!tunit)
+	            tunit = tcell.unit;
+	        if (tunit == this)
+	            return 0;
+	        let fov = direct ? this.cell.dfov : this.cell.xfov;
+	        let tat = tcell.at;
+	        if (!fov.has(tcell.cid))
+	            return 0;
+	        let cover = this.cover(tcell || tunit.cell);
+	        if (cover == -1)
+	            return 0;
+	        if (!bonuses)
+	            bonuses = {};
+	        bonuses.accuracy = this.gun.accuracy;
+	        bonuses.cover = -cover * 25;
+	        bonuses.dodge = -tunit.def;
+	        bonuses.distance = -this.gun.accuracyPenalty(this.dist(tunit));
+	        bonuses.ownVelocity = this.velocityAccuracyBonus(tat);
+	        bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
+	        bonuses.ownFocus = this.focusAccuracyBonus(tat);
+	        bonuses.targetFocus = -tunit.focusDefenceBonus(this.at);
+	        if (bonuses.cover < bonuses.targetVelocity)
+	            bonuses.targetVelocity = 0;
+	        else
+	            bonuses.cover = 0;
+	        console.log(JSON.stringify(bonuses));
+	        let chance = Math.round(Object.values(bonuses).reduce((a, b) => a + b));
+	        return chance;
+	    }
+	    die() {
+	        this.terrain.units = this.terrain.units.filter(c => c.hp > 0);
+	        delete this.cell.unit;
+	        if (this.team.units.length == 0) {
+	            this.terrain.declareVictory(this.team.enemy);
+	        }
+	    }
+	    takeDamage(dmg) {
+	        this.hp = Math.max(0, this.hp - dmg);
+	        if (this.hp <= 0) {
+	            this.die();
+	        }
+	        this.onChange();
+	    }
+	    onChange() {
+	        this.terrain.animate({ char: this });
+	    }
+	    shoot(tcell) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            if (!tcell)
+	                return false;
+	            let target = tcell.unit;
+	            if (!target)
+	                return false;
+	            let chance = this.hitChance(tcell);
+	            if (chance == 0)
+	                return false;
+	            let success = this.terrain.rni() % 100 < chance;
+	            this.ap = 0;
+	            let dmg = 0;
+	            if (success) {
+	                dmg = this.gun.damageRoll(this, target.cell, this.terrain.rnf);
+	            }
+	            yield this.animateShoot(target.cid, dmg);
+	            target.takeDamage(dmg);
+	            if (target.hp <= 0)
+	                this.team.calculate();
+	            let dir = norm(sub(tcell.at, this.at));
+	            this.focusAccuracyBonus(tcell.at);
+	            this.focus = scale(dir, Math.min(this.gun.maxFocus, 10 + this.focusAccuracyBonus(tcell.at)));
+	            this.velocity = [0, 0];
+	            return true;
+	        });
+	    }
+	    teleport(to) {
+	        if (this.cell) {
+	            if (this.cell == to)
+	                return;
+	            delete this.cell.unit;
+	        }
+	        to.unit = this;
+	        this.cell = to;
+	        this.calculate();
+	    }
+	    calculateReactionFire(path) {
+	        let enemies = this.team.enemy.units;
+	        let rfPoints = [];
+	        for (let enemy of enemies) {
+	            if (enemy.ap == 0)
+	                continue;
+	            let bestMoment = max(path, step => !step.unit && enemy.averageDamage(step, this, true));
+	            if (bestMoment && bestMoment.val >= 1) {
+	                rfPoints.push({ moment: bestMoment.ind, enemy });
+	            }
+	        }
+	        rfPoints = rfPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
+	        return rfPoints;
+	    }
+	    calculateVelocity(path) {
+	        let delta = sub(path[path.length - 1].at, path[0].at);
+	        return round(norm(delta, this.speed));
+	    }
+	    move(to) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            if (to == this.cell || !to)
+	                return false;
+	            this.ap -= this.apCost(to);
+	            let path = this.pathTo(to);
+	            this.velocity = this.calculateVelocity(path);
+	            this.focus = norm(this.velocity, 10);
+	            let enemies = this.team.enemy.units;
+	            let rfPoints = [];
+	            for (let enemy of enemies) {
+	                if (enemy.ap == 0)
+	                    continue;
+	                let bestMoment = max(path, step => !step.unit && enemy.averageDamage(step, this, true));
+	                if (bestMoment && bestMoment.val >= 1) {
+	                    rfPoints.push({ moment: bestMoment.ind, enemy });
+	                }
+	            }
+	            rfPoints = rfPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
+	            for (let owPoint of rfPoints) {
+	                let place = path[owPoint.moment];
+	                yield this.animateWalk(this.pathTo(place));
+	                this.teleport(place);
+	                yield owPoint.enemy.shoot(place);
+	                if (!this.alive)
+	                    return true;
+	            }
+	            yield this.animateWalk(this.pathTo(to));
+	            this.teleport(to);
+	            if (this.cell.items.length > 0) {
+	                this.hp = this.maxHP;
+	                this.cell.items = [];
+	            }
+	            return true;
+	        });
+	    }
+	    animateWalk(path) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            if (path.length <= 1)
+	                return;
+	            yield this.terrain.animate({ anim: "walk", char: this, path });
+	        });
+	    }
+	    animateShoot(tcid, damage) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.terrain.animate({
+	                anim: "shoot",
+	                from: this.cid,
+	                to: tcid,
+	                damage
+	            });
+	        });
+	    }
+	    canDamage(target) {
+	        return (target &&
+	            this.team != target.team &&
+	            this.cell.xfov.has(target.cid) &&
+	            this.canShoot());
+	    }
+	    bestPosition() {
+	        let team = this.team;
+	        this.calculate();
+	        let bestScore = -100;
+	        let bestAt;
+	        for (let i in this.dists) {
+	            let d = this.dists[i][0];
+	            if (d > this.speed * this.ap)
+	                continue;
+	            let score = team.strength[i] -
+	                team.weakness[i] -
+	                idiv(d, this.speed) * 0.5 -
+	                d * 0.001;
+	            score += team.distance[i] * this.aggression;
+	            if (score > bestScore) {
+	                bestScore = score;
+	                bestAt = Number(i);
+	            }
+	        }
+	        return this.terrain.cells[bestAt];
+	    }
+	    averageDamage(tcell, tunit, direct = false) {
+	        let hitChance = this.hitChance(tcell, tunit, direct);
+	        return (hitChance * this.gun.averageDamage(this, tcell)) / 100;
+	    }
+	    bestTarget() {
+	        let bestScore = -100;
+	        let bestAt = null;
+	        for (let tchar of this.terrain.units) {
+	            if (tchar.team == this.team || tchar.hp <= 0)
+	                continue;
+	            let score = this.averageDamage(tchar.cell);
+	            if (score > bestScore) {
+	                bestScore = score;
+	                bestAt = tchar.cell;
+	            }
+	        }
+	        return bestAt;
+	    }
+	    think() {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            yield this.move(this.bestPosition());
+	            if (this.ap > 0) {
+	                yield this.shoot(this.bestTarget());
+	            }
+	        });
+	    }
+	    dist(other) {
+	        return dist(this.at, other.at);
+	    }
+	    get alive() {
+	        return this.hp > 0;
+	    }
+	    friendly(other) {
+	        return other && this.team == other.team;
+	    }
+	    get moving() {
+	        return length(this.velocity) > 0;
+	    }
+	    get focused() {
+	        return length(this.focus) > 0;
+	    }
+	}
+	Unit.EYE = -1;
+	Unit.GUNNER = 1;
+	Unit.ASSAULT = 2;
+	Unit.SNIPER = 3;
+	Unit.RECON = 4;
+	Unit.MEDIC = 5;
+	Unit.HEAVY = 6;
+	Unit.COMMANDER = 7;
+	Unit.saveFields = "hp ap exhaustion stress focus velocity".split(" ");
+
+	class Gun {
+	    constructor(o) {
+	        this.damageOptimalRange = [1, 20];
+	        this.damage = [4, 5];
+	        this.damagePenaltyPerCell = 100;
+	        this.accuracyPenaltyMax = 20;
+	        this.accuracy = 60;
+	        this.accuracyOptimalRange = [1, 1];
+	        this.accuracyPenaltyPerCell = 1;
+	        this.damagePenaltyMax = 2;
+	        this.breach = 0;
+	        this.maxFocus = 30;
+	        this.name = "Gun";
+	        if (o)
+	            Object.assign(this, o);
+	    }
+	    damagePenalty(dist) {
+	        let diff = 0;
+	        if (dist < this.damageOptimalRange[0]) {
+	            diff = this.damageOptimalRange[0] - dist;
+	        }
+	        if (dist > this.damageOptimalRange[1]) {
+	            diff = dist - this.damageOptimalRange[1];
+	        }
+	        //debugger;
+	        return Math.floor(Math.min(this.damagePenaltyMax, this.damagePenaltyPerCell * diff));
+	    }
+	    accuracyPenalty(dist) {
+	        let diff = 0;
+	        if (dist < this.accuracyOptimalRange[0]) {
+	            diff = this.accuracyOptimalRange[0] - dist;
+	        }
+	        if (dist > this.accuracyOptimalRange[1]) {
+	            diff = dist - this.accuracyOptimalRange[1];
+	        }
+	        //debugger;
+	        return Math.floor(Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff));
+	    }
+	    averageDamage(by, tcell, tunit) {
+	        if (!tunit)
+	            tunit = tcell.unit;
+	        let dmg = (this.damage[1] + this.damage[0]) * 0.5;
+	        if (tunit)
+	            dmg -= Math.max(0, tcell.unit.armor - this.breach);
+	        dmg -= this.damagePenalty(by.dist(tcell));
+	        return Math.max(0, Math.round(dmg * 10) / 10);
+	    }
+	    damageRoll(by, tcell, rnf) {
+	        let dmg = rnf() * (this.damage[1] - this.damage[0]) + this.damage[0];
+	        if (tcell.unit)
+	            dmg -= Math.max(0, tcell.unit.armor - this.breach);
+	        dmg -= this.damagePenalty(by.dist(tcell));
+	        return Math.max(0, Math.round(dmg));
+	    }
+	}
+
+	class Terrain {
+	    constructor(campaign, stage, state, animate) {
+	        this.campaign = campaign;
+	        this.stage = stage;
+	        this.animate = animate;
+	        this.aiTurn = false;
+	        this.rni = random(1);
+	        this.rnf = () => (this.rni() % 1e9) / 1e9;
+	        for (let gunId in campaign.guns) {
+	            campaign.guns[gunId] = new Gun(campaign.guns[gunId]);
+	        }
+	        this.init(this.stage.terrain);
+	        if (state)
+	            this.loadState(state);
+	    }
+	    serialize() {
+	        return {
+	            teams: this.teams.map(t => t.serialize()),
+	            cells: this.cells.filter(c => c.serializable()).map(o => o.serialize()),
+	            activeTeam: this.activeTeam.faction
+	        };
+	    }
+	    init(terrainString) {
+	        this.terrainString = terrainString;
+	        let lines = terrainString
+	            .split("\n")
+	            .map(s => s.trim())
+	            .filter(s => s.length > 0);
+	        this.h = lines.length;
+	        this.w = Math.max(...lines.map(s => s.length));
+	        this.cells = [];
+	        this.units = [];
+	        this.teams = [];
+	        delete this.victor;
+	        for (let i = 0; i < 2; i++) {
+	            let team = new Team(this, i);
+	            this.teams[i] = team;
+	        }
+	        for (let y = 0; y < this.h; y++) {
+	            let line = lines[y];
+	            for (let x = 0; x < this.w; x++) {
+	                let cid = x + y * this.w;
+	                let symbol = line[x] || " ";
+	                let cell = new Cell(this, cid, ["+", "#"].indexOf(symbol) + 1);
+	                if (this.campaign.units[symbol.toLowerCase()])
+	                    new Unit(cell, { symbol, cid });
+	                if (symbol == "*")
+	                    cell.addItem(new Item(Item.MEDKIT));
+	                if (symbol == "~")
+	                    cell.hole = true;
+	                this.cells[cid] = cell;
+	            }
+	        }
+	        for (let i = 0; i < this.w; i++) {
+	            this.seal(i, 0);
+	            this.seal(i, this.h - 1);
+	        }
+	        for (let i = 0; i < this.h; i++) {
+	            this.seal(0, i);
+	            this.seal(this.w - 1, i);
+	        }
+	        this.dir8Deltas = Terrain.dirs8.map(v => v[0] + v[1] * this.w);
+	        for (let c of this.cells) {
+	            if (!c.obstacle)
+	                c.calculatePovAnCover();
+	        }
+	        console.log(this.w);
+	        console.log(this.h);
+	        console.time("FOV");
+	        for (let c of this.cells) {
+	            if (!c.obstacle) {
+	                c.calculatePovAnCover();
+	                c.calculateFov();
+	            }
+	        }
+	        console.timeEnd("FOV");
+	        for (let c of this.cells) {
+	            if (!c.obstacle) {
+	                c.calculateXFov();
+	                c.calculateDFov();
+	            }
+	        }
+	        this.activeTeam = this.teams[0];
+	        console.log(this);
+	    }
+	    seal(x, y) {
+	        this.cells[this.cid(x, y)].seal();
+	    }
+	    loadState(state) {
+	        if (!state || !state.teams)
+	            return;
+	        this.units = [];
+	        this.cells.forEach(c => {
+	            delete c.unit;
+	            c.items = [];
+	        });
+	        this.teams = state.teams.map((t, i) => {
+	            let team = new Team(this, i);
+	            for (let u of t.units) {
+	                let unit = new Unit(this.cells[u.cid], u);
+	                unit.team = team;
+	            }
+	            return team;
+	        });
+	        this.activeTeam = this.teams[state.activeTeam];
+	    }
+	    calcDists(fromi) {
+	        let dists = this.cells.map(_ => [Number.MAX_VALUE, -1]);
+	        dists[fromi] = [0, -1];
+	        let todo = [fromi];
+	        let char = this.cells[fromi].unit;
+	        while (todo.length > 0) {
+	            let curi = todo.shift();
+	            let curl = dists[curi][0];
+	            let curc = this.cells[curi];
+	            for (let dir = 0; dir < 8; dir++) {
+	                let diagonal = dir % 2;
+	                let nexti = this.dir8Deltas[dir] + curi;
+	                let nextc = this.cells[nexti];
+	                if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(char)))
+	                    continue;
+	                if (diagonal &&
+	                    (this.cells[curi + this.dir8Deltas[(dir + 1) % 8]].obstacle ||
+	                        this.cells[curi + this.dir8Deltas[(dir + 7) % 8]].obstacle))
+	                    continue;
+	                let obstacleness = nextc.obstacle +
+	                    curc.obstacle +
+	                    (curc.unit ? 1 : 0) +
+	                    (nextc.unit ? 1 : 0);
+	                if (obstacleness > 1 && (diagonal && obstacleness > 0))
+	                    continue;
+	                let next = dists[nexti];
+	                let plusl = obstacleness + (diagonal ? 1.414 : 1);
+	                if (next[0] > curl + plusl) {
+	                    dists[nexti] = [curl + plusl, curi];
+	                    todo.push(nexti);
+	                }
+	            }
+	        }
+	        for (let i = 0; i < dists.length; i++) {
+	            if (!this.cells[i].standable)
+	                dists[i][0] = Number.MAX_VALUE;
+	        }
+	        return dists;
+	    }
+	    safeCid(x, y) {
+	        if (x >= 0 && y >= 0 && x < this.w && y < this.h)
+	            return this.cid(x, y);
+	    }
+	    cid(x, y) {
+	        return x + y * this.w;
+	    }
+	    cellAt(x, y) {
+	        return this.cells[this.cid(x, y)];
+	    }
+	    fromCid(ind) {
+	        return [ind % this.w, idiv(ind, this.w)];
+	    }
+	    calculateFov(cid) {
+	        let [x, y] = this.fromCid(cid);
+	        let visibility = new Set();
+	        shadowcast(x, y, (x, y) => !this.cellAt(x, y).opaque, (x, y) => {
+	            for (let pov of this.cells[this.cid(x, y)].peeked)
+	                visibility.add(pov.cid);
+	        });
+	        return visibility;
+	    }
+	    calculateDirectFov(cid) {
+	        let [x, y] = this.fromCid(cid);
+	        let visibility = new Set();
+	        shadowcast(x, y, (x, y) => !this.cellAt(x, y).opaque, (x, y) => {
+	            visibility.add(this.cid(x, y));
+	        });
+	        return visibility;
+	    }
+	    obstacles(cid) {
+	        let obstacles = [];
+	        for (let dir = 0; dir < 8; dir += 2) {
+	            let forward = cid + this.dir8Deltas[dir];
+	            obstacles.push(this.cells[forward].obstacle);
+	        }
+	        return obstacles;
+	    }
+	    cover(from, target) {
+	        let visible = from.xfov.has(target.cid);
+	        if (!visible)
+	            return -1;
+	        let worstCover = 2;
+	        for (let pov of from.povs) {
+	            let bestCover = 0;
+	            let delta = sub(target.at, pov.at);
+	            for (let i = 0; i < 4; i++) {
+	                let cover = target.cover[i];
+	                if (cover <= bestCover)
+	                    continue;
+	                let dot$1 = dot(Terrain.dirs8[i * 2], delta);
+	                if (dot$1 < -0.001)
+	                    bestCover = cover;
+	            }
+	            if (bestCover < worstCover)
+	                worstCover = bestCover;
+	        }
+	        return worstCover;
+	    }
+	    declareVictory(team) {
+	        this.victor = team;
+	    }
+	    get we() {
+	        return this.teams[Team.BLUE];
+	    }
+	    endSideTurn() {
+	        this.activeTeam.endTurn();
+	        this.teams[(this.activeTeam.faction + 1) % this.teams.length].beginTurn();
+	    }
+	}
+	Terrain.dirs8 = [
+	    [0, -1],
+	    [1, -1],
+	    [1, 0],
+	    [1, 1],
+	    [0, 1],
+	    [-1, 1],
+	    [-1, 0],
+	    [-1, -1]
+	];
+
+	class MovingText {
+	    constructor(text, color, lifeTime, at, vel = [0, 0]) {
+	        this.text = text;
+	        this.color = color;
+	        this.lifeTime = lifeTime;
+	        this.at = at;
+	        this.vel = vel;
+	        this.time = 0;
+	    }
+	    update(dTime) {
+	        this.time += dTime;
+	        this.at = sum(this.at, this.vel, dTime);
+	        return this.time < this.lifeTime;
+	    }
+	    render(ctx) {
+	        ctx.save();
+	        ctx.fillStyle = this.color;
+	        ctx.shadowColor = `black`;
+	        ctx.shadowBlur = 1;
+	        ctx.shadowOffsetX = 1;
+	        ctx.shadowOffsetY = 1;
+	        ctx.font = `12pt "Courier"`;
+	        ctx.textAlign = "center";
+	        let y = 0;
+	        let l = 0;
+	        for (let line of this.text.split("|")) {
+	            ctx.fillText(line.trim().substr(0, Math.floor(this.time * 70) - l), this.at[0], this.at[1] + y);
+	            l += line.length;
+	            y += 20;
+	        }
+	        ctx.restore();
+	    }
+	}
+
+	let insideBorder = 0;
+
+	const dashInterval = 4;
+	class Doll {
+	    constructor(unit, renderer) {
+	        this.unit = unit;
+	        this.at = renderer.cidToPoint(unit.cid);
+	    }
+	}
+	class RenderSchematic {
+	    constructor(game) {
+	        this.game = game;
+	        this.canvasCacheOutdated = false;
+	        this.anim = [];
+	        this.animQueue = [];
+	        this.dolls = [];
+	        this.tileSize = 32;
+	        this.screenPos = [0, 0];
+	        this.dollCache = {};
+	        this.initSprites();
+	    }
+	    get canvas() {
+	        return this.game.canvas;
+	    }
+	    synch() {
+	        this.dolls = this.terrain.units.map(unit => new Doll(unit, this));
+	        this.updateCanvasCache();
+	    }
+	    get terrain() {
+	        return this.game.terrain;
+	    }
+	    resize() {
+	        if (!this.canvas)
+	            return;
+	        this.canvas.width = this.canvas.clientWidth;
+	        this.canvas.height = this.canvas.clientHeight;
+	        this.width = this.canvas.clientWidth;
+	        this.height = this.canvas.clientHeight;
+	        if (this.terrain)
+	            this.screenPos = [
+	                0.5 * (this.width - this.terrain.w * this.tileSize),
+	                0.5 * (this.height - this.terrain.h * this.tileSize)
+	            ];
+	        this.canvas.getContext("2d").imageSmoothingEnabled = false;
+	    }
+	    update(dTime) {
+	        let d = this.lookingAt ? dist(this.lookingAt, this.screenPos) : 0;
+	        if (this.lookingAt && d > 20) {
+	            this.screenPos = lerp(this.screenPos, this.lookingAt, Math.min(1, dTime * Math.max(d / 50, 10) * this.animSpeed));
+	        }
+	        else {
+	            delete this.lookingAt;
+	            let anims = this.anim;
+	            this.anim = [];
+	            anims = anims.filter(fx => {
+	                return fx.update(dTime);
+	            });
+	            this.anim = this.anim.concat(anims);
+	            if (this.animQueue.length > 0 && !this.animQueue[0].update(dTime))
+	                this.animQueue.shift();
+	            if (this.animQueue.length == 0 && this.blockingAnimationEnd) {
+	                this.blockingAnimationEnd();
+	                delete this.blockingAnimationEnd;
+	            }
+	        }
+	        this.dolls = this.dolls.filter(d => d.unit.alive);
+	    }
+	    render(ctx) {
+	        if (!ctx)
+	            return;
+	        ctx.clearRect(0, 0, this.width, this.height);
+	        let t = this.terrain;
+	        ctx.save();
+	        ctx.translate(...this.screenPos);
+	        if (!this.canvasCache || this.canvasCacheOutdated)
+	            this.updateCanvasCache();
+	        ctx.clearRect(0, 0, t.w * this.tileSize, t.h * this.tileSize);
+	        ctx.drawImage(this.canvasCache, 0, 0);
+	        for (let d of this.dolls) {
+	            this.renderDoll(ctx, d);
+	        }
+	        for (let fx of this.anim)
+	            if (fx.render)
+	                fx.render(ctx);
+	        if (this.animQueue.length > 0 && this.animQueue[0].render)
+	            this.animQueue[0].render(ctx);
+	        if (!this.busy)
+	            this.renderPath(ctx, this.game.hovered);
+	        ctx.restore();
+	        return this.animQueue.length > 0;
+	    }
+	    renderPath(ctx, cell) {
+	        let unit = this.game.chosen;
+	        if (!unit ||
+	            !cell ||
+	            !unit.dists ||
+	            !unit.dists[cell.cid] ||
+	            unit.dists[cell.cid][1] == -1)
+	            return;
+	        if (!unit.reachable(cell))
+	            return;
+	        let end = this.cidToCenterPoint(cell.cid);
+	        ctx.beginPath();
+	        if (unit.reachable(cell))
+	            ctx.arc(end[0], end[1], this.tileSize / 4, 0, Math.PI * 2);
+	        else {
+	            ctx.moveTo(end[0] - this.tileSize / 4, end[1] - this.tileSize / 4);
+	            ctx.lineTo(end[0] + this.tileSize / 4, end[1] + this.tileSize / 4);
+	            ctx.stroke();
+	            ctx.beginPath();
+	            ctx.moveTo(end[0] - this.tileSize / 4, end[1] + this.tileSize / 4);
+	            ctx.lineTo(end[0] + this.tileSize / 4, end[1] - this.tileSize / 4);
+	        }
+	        ctx.stroke();
+	        let path = unit.pathTo(cell);
+	        ctx.beginPath();
+	        ctx.moveTo(...this.cidToCenterPoint(path[0].cid));
+	        for (let i of path)
+	            ctx.lineTo(...this.cidToCenterPoint(i.cid));
+	        ctx.stroke();
+	    }
+	    renderThreats(ctx, cell) {
+	        let t = this.terrain;
+	        let i = cell.cid;
+	        if (!t.teams[Team.RED].strength)
+	            return;
+	        ctx.strokeStyle = "#800";
+	        ctx.lineWidth = t.teams[Team.RED].strength[i] == 4 ? 3 : 1;
+	        ctx.beginPath();
+	        ctx.moveTo(3.5, 3.5);
+	        ctx.lineTo(3.5, 3.5 + 3 * t.teams[Team.RED].strength[i]);
+	        ctx.stroke();
+	        ctx.strokeStyle = "#008";
+	        ctx.lineWidth = t.teams[Team.RED].weakness[i] == 4 ? 3 : 1;
+	        ctx.beginPath();
+	        ctx.moveTo(3.5, 3.5);
+	        ctx.lineTo(3.5 + 3 * t.teams[Team.RED].weakness[i], 3.5);
+	        ctx.stroke();
+	    }
+	    renderCell(ctx, cell) {
+	        let at = this.cidToPoint(cell.cid);
+	        let sprite = [, this.lowTile, this.highTile][cell.obstacle];
+	        if (cell.hole) {
+	            sprite = this.waterTile;
+	        }
+	        if (sprite)
+	            ctx.drawImage(sprite, at[0], at[1]);
+	        if (cell.items.length > 0) {
+	            ctx.translate(...at);
+	            ctx.fillStyle = "#080";
+	            ctx.fillRect(this.tileSize * 0.35, 0, this.tileSize * 0.3, this.tileSize);
+	            ctx.fillRect(0, this.tileSize * 0.35, this.tileSize, this.tileSize * 0.3);
+	            ctx.translate(...scale(at, -1));
+	        }
+	    }
+	    renderCellUI(ctx, cell) {
+	        let at = this.cidToPoint(cell.cid);
+	        let g = this.game;
+	        ctx.strokeStyle = "#000";
+	        ctx.lineWidth = 2;
+	        if (g.hovered && !g.hovered.opaque) {
+	            let xfov = g.hovered.xfov.has(cell.cid);
+	            let dfov = g.hovered.rfov.has(cell.cid);
+	            if (!dfov) {
+	                ctx.fillStyle = `rgba(${xfov ? "50,50,0,0.04" : "0,0,50,0.1"})`;
+	                ctx.fillRect(at[0], at[1], this.tileSize, this.tileSize);
+	            }
+	        }
+	        if (g.chosen && g.chosen.dists && !this.busy) {
+	            let moves = g.chosen.apCost(cell);
+	            if (moves > 0 && moves <= g.chosen.ap) {
+	                let img = [, this.ap1Sprite, this.ap2Sprite][Math.floor(moves)];
+	                if (img)
+	                    ctx.drawImage(img, at[0], at[1]);
+	            }
+	        }
+	        if ( cell.povs && cell.peeked.includes(this.game.hovered)) {
+	            ctx.strokeStyle = `rgba(0,0,0,0.5)`;
+	            ctx.lineWidth = 0.5;
+	            ctx.beginPath();
+	            ctx.arc(at[0] + this.tileSize / 2, at[1] + this.tileSize / 2, this.tileSize / 4, 0, Math.PI * 2);
+	            ctx.stroke();
+	        }
+	    }
+	    renderDoll(ctx, doll) {
+	        ctx.save();
+	        ctx.translate(...doll.at);
+	        this.useDollCache(ctx, doll);
+	        if (doll.unit == this.game.chosen) {
+	            this.outline(ctx, doll, Math.sin(new Date().getTime() / 100) + 1);
+	        }
+	        else if (doll.unit == this.game.hoveredChar) {
+	            this.outline(ctx, doll, 1.5);
+	        }
+	        ctx.restore();
+	    }
+	    outline(ctx, doll, width = 2) {
+	        ctx.save();
+	        ctx.strokeStyle = doll.unit.strokeColor;
+	        ctx.lineWidth = width;
+	        ctx.beginPath();
+	        ctx.arc(this.tileSize / 2, this.tileSize / 2, this.tileSize * 0.4, 0, Math.PI * 2);
+	        ctx.stroke();
+	        ctx.restore();
+	    }
+	    useDollCache(ctx, doll) {
+	        let unit = doll.unit;
+	        let state = ["cid", "hp", "ap", "kind", "faction", "focus", "velocity"].map(key => unit[key]);
+	        state.push(this.dollTint(doll));
+	        let key = JSON.stringify(state);
+	        if (!(key in this.dollCache))
+	            this.dollCache[key] = canvasCache([this.tileSize * 2, this.tileSize * 2], ctx => this.renderDollBody(ctx, doll, this.dollTint(doll)));
+	        ctx.drawImage(this.dollCache[key], -0.5 * this.tileSize, -0.5 * this.tileSize);
+	    }
+	    dollTint(doll) {
+	        if (this.busy || this.terrain.aiTurn)
+	            return 0;
+	        let unit = doll.unit;
+	        let flankNum = 0;
+	        let hover = this.game.hovered;
+	        if (hover && !hover.opaque && hover.xfov) {
+	            let visible = hover.xfov.has(unit.cid) || unit.team == this.game.lastSelectedFaction;
+	            if (visible)
+	                flankNum =
+	                    (this.terrain.cover(unit.cell, hover) == 0 ? 1 : 0) +
+	                        (this.terrain.cover(hover, unit.cell) == 0 ? 2 : 0);
+	            else
+	                flankNum = 4;
+	        }
+	        if (!this.game.hovered)
+	            flankNum = 0;
+	        return flankNum;
+	    }
+	    renderDollBody(ctx, doll, tint) {
+	        let unit = doll.unit;
+	        ctx.fillStyle = ["#fff", "#fba", "#cfa", "#ffa", "#ccc"][tint];
+	        ctx.strokeStyle = unit.strokeColor;
+	        ctx.scale(this.tileSize, this.tileSize);
+	        ctx.translate(0.5, 0.5);
+	        ctx.shadowColor = "#444";
+	        ctx.shadowOffsetX = 1;
+	        ctx.shadowOffsetY = 1;
+	        ctx.shadowBlur = 4;
+	        ctx.beginPath();
+	        ctx.arc(0.5, 0.5, 0.4, 0, Math.PI * 2);
+	        ctx.fill();
+	        ctx.shadowColor = `rgba(0,0,0,0)`;
+	        /*ctx.lineWidth = 0.05;
+	        
+	        for (let i = 0; i < unit.hp; i++) {
+	          let angle = Math.PI * (1 - i / (unit.maxHP - 1));
+	          let v = v2.fromAngle(angle);
+	          ctx.beginPath();
+	          ctx.moveTo(
+	            (0.5 + v[0] * 0.3),
+	            (0.5 + v[1] * 0.3)
+	          );
+	          ctx.lineTo(
+	            (0.5 + v[0] * 0.4),
+	            (0.5 + v[1] * 0.4)
+	          );
+	          ctx.stroke();
+	        }*/
+	        ctx.lineWidth = 0.1;
+	        if (unit.ap > 0) {
+	            ctx.fillStyle = doll.unit.strokeColor;
+	            ctx.beginPath();
+	            ctx.arc(0.2, 0.4, 0.07, 0, Math.PI * 2);
+	            ctx.fill();
+	            if (unit.ap > 1) {
+	                ctx.beginPath();
+	                ctx.arc(0.8, 0.4, 0.07, 0, Math.PI * 2);
+	                ctx.fill();
+	            }
+	        }
+	        ctx.beginPath();
+	        ctx.fillStyle = unit.strokeColor;
+	        ctx.textAlign = "center";
+	        ctx.font = `bold ${0.5}pt Courier`;
+	        ctx.fillText(unit.symbol.toUpperCase(), 0.5, 0.66);
+	        ctx.stroke();
+	        if (unit.focused) {
+	            ctx.save();
+	            ctx.translate(0.5, 0.5);
+	            let angle = Math.atan2(unit.focus[1], unit.focus[0]);
+	            ctx.rotate(angle);
+	            ctx.lineWidth = 0.003 * length(unit.focus);
+	            ctx.beginPath();
+	            ctx.moveTo(0.45, -0.15);
+	            ctx.lineTo(0.6, 0);
+	            ctx.lineTo(0.45, 0.15);
+	            ctx.stroke();
+	            ctx.restore();
+	        }
+	        if (unit.moving) {
+	            ctx.save();
+	            ctx.translate(0.5, 0.5);
+	            let angle = Math.atan2(unit.velocity[1], unit.velocity[0]);
+	            ctx.rotate(angle);
+	            ctx.lineWidth = 0.01 + 0.01 * length(unit.velocity);
+	            ctx.beginPath();
+	            ctx.moveTo(-0.6, -0.15);
+	            ctx.lineTo(-0.45, 0);
+	            ctx.lineTo(-0.6, 0.15);
+	            ctx.stroke();
+	            ctx.restore();
+	        }
+	        ctx.save();
+	        ctx.lineWidth = 0.05;
+	        ctx.transform(-1, 0, 0, 1, 1, 0);
+	        ctx.setLineDash([6 / unit.maxHP - 0.05, 0.05]);
+	        ctx.beginPath();
+	        ctx.arc(0.5, 0.5, 0.35, 0, (Math.PI * unit.hp) / unit.maxHP);
+	        ctx.stroke();
+	        ctx.restore();
+	    }
+	    cidToPoint(ind) {
+	        return this.terrain.fromCid(ind).map(a => a * this.tileSize);
+	    }
+	    cidToCenterPoint(ind) {
+	        return scale(sum(this.terrain.fromCid(ind), [0.5, 0.5]), this.tileSize);
+	    }
+	    cidToCenterScreen(ind) {
+	        return sum(this.cidToCenterPoint(ind), this.screenPos);
+	    }
+	    cidFromPoint(x, y) {
+	        return this.terrain.safeCid(idiv(x, this.tileSize), idiv(y, this.tileSize));
+	    }
+	    cellAtScreenPos(x, y) {
+	        return this.terrain.cells[this.cidFromPoint(...sub([x, y], this.screenPos))];
+	    }
+	    get animSpeed() {
+	        return 2;
+	        //return this.terrain.aiTurn ? 0.5 : 0.5;
+	    }
+	    updateCanvasCache() {
+	        if (!this.canvasCache)
+	            this.canvasCache = createCanvas(this.terrain.w * this.tileSize, this.terrain.h * this.tileSize);
+	        if (!this.canvasTerrain)
+	            this.canvasTerrain = createCanvas(this.terrain.w * this.tileSize, this.terrain.h * this.tileSize);
+	        let tctx = this.canvasTerrain.getContext("2d");
+	        tctx.clearRect(0, 0, this.terrain.w * this.tileSize, this.terrain.h * this.tileSize);
+	        for (let i = 0; i < this.terrain.cells.length; i++) {
+	            let cell = this.terrain.cells[i];
+	            this.renderCell(tctx, cell);
+	        }
+	        let ctx = this.canvasCache.getContext("2d");
+	        ctx.clearRect(0, 0, this.terrain.w * this.tileSize, this.terrain.h * this.tileSize);
+	        ctx.save();
+	        ctx.shadowBlur = 4;
+	        ctx.shadowOffsetX = 1;
+	        ctx.shadowOffsetY = 1;
+	        ctx.shadowColor = "#444";
+	        ctx.drawImage(this.canvasTerrain, 0, 0);
+	        ctx.restore();
+	        for (let i = 0; i < this.terrain.cells.length; i++) {
+	            let cell = this.terrain.cells[i];
+	            this.renderCellUI(ctx, cell);
+	        }
+	        this.canvasCacheOutdated = false;
+	    }
+	    resetCanvasCache() {
+	        this.canvasCacheOutdated = true;
+	    }
+	    text(from, text) {
+	        let at = sum(from, [0, -10]);
+	        this.anim.push(new MovingText(text, "#f00", 3, at, [0, -10]));
+	    }
+	    renderBullet(ctx, [from, to], time) {
+	        ctx.beginPath();
+	        let delta = norm(sub(to, from), -20);
+	        let at = lerp(from, to, time);
+	        this.lookAt(at);
+	        let tail = sum(at, delta);
+	        var grad = ctx.createLinearGradient(tail[0], tail[1], at[0], at[1]);
+	        grad.addColorStop(0, `rgba(0,0,0,0)`);
+	        grad.addColorStop(1, `rgba(0,0,0,1)`);
+	        ctx.lineWidth = 4;
+	        ctx.strokeStyle = grad;
+	        ctx.moveTo(...tail);
+	        ctx.lineTo(...at);
+	        ctx.stroke();
+	        ctx.lineWidth = 1;
+	        ctx.strokeStyle = "#000";
+	    }
+	    insideScreen(at) {
+	        at = sum(at, this.screenPos);
+	        return (at[0] >= insideBorder &&
+	            at[1] >= insideBorder &&
+	            at[0] <= this.width - insideBorder &&
+	            at[1] <= this.height - insideBorder);
+	    }
+	    lookAtCid(cid) {
+	        this.lookAt(this.cidToCenterPoint(cid));
+	    }
+	    lookAt(at) {
+	        //console.log(at);
+	        let newLookingA = [-at[0] + this.width / 2, -at[1] + this.height / 2];
+	        if (dist(this.screenPos, newLookingA) <= 20) {
+	            this.screenPos = newLookingA;
+	        }
+	        if (!this.insideScreen(at))
+	            this.lookingAt = newLookingA;
+	    }
+	    shoot(from, to, dmg) {
+	        let tiles = [from, to].map(v => this.terrain.cells[v]);
+	        let points;
+	        let shootPoint;
+	        let a, b;
+	        completely: for (a of tiles[0].povs)
+	            for (b of tiles[1].povs) {
+	                if (a.rfov.has(b.cid)) {
+	                    points = [a, b].map(v => this.cidToCenterPoint(v.cid));
+	                    break completely;
+	                }
+	            }
+	        if (dmg > 0) {
+	            shootPoint = points[1];
+	        }
+	        else {
+	            let dir = norm(sub(points[1], points[0]));
+	            shootPoint = sum(sum(points[1], rot(dir)), dir, 10 * this.tileSize);
+	        }
+	        let fdoll = this.dollAt(from);
+	        let tdoll = this.dollAt(to);
+	        let time = 0;
+	        if (a.cid == from && b.cid == to) {
+	            time = 1;
+	        }
+	        this.animQueue.push({
+	            update: dTime => {
+	                if (time >= 1 && time <= 2) {
+	                    time +=
+	                        dTime *
+	                            Math.min(10, (1000 / dist(points[0], shootPoint)) * this.animSpeed);
+	                }
+	                else {
+	                    let peek = (time < 1 ? time : 3 - time) * 0.6;
+	                    for (let i = 0; i < 2; i++) {
+	                        let doll = [fdoll, tdoll][i];
+	                        doll.at = lerp(this.cidToPoint([from, to][i]), sub(points[i], [this.tileSize / 2, this.tileSize / 2]), peek);
+	                    }
+	                    time += dTime * this.animSpeed * 10;
+	                }
+	                if (time > 3) {
+	                    this.text(points[1], dmg > 0 ? `-${dmg}` : "MISS");
+	                    fdoll.at = this.cidToPoint(fdoll.unit.cid);
+	                    tdoll.at = this.cidToPoint(tdoll.unit.cid);
+	                    return false;
+	                }
+	                return true;
+	            },
+	            render: (ctx) => {
+	                if (time > 1 && time < 2)
+	                    this.renderBullet(ctx, [points[0], shootPoint], time - 1);
+	            }
+	        });
+	    }
+	    walk(doll, steps) {
+	        let path = steps.map(v => this.cidToPoint(v.cid));
+	        let time = 0;
+	        this.animQueue.push({
+	            update: dTime => {
+	                time += dTime * 15 * this.animSpeed;
+	                if (!path[Math.floor(time) + 1]) {
+	                    doll.at = path[path.length - 1];
+	                    return false;
+	                }
+	                doll.at = lerp(path[Math.floor(time)], path[Math.floor(time) + 1], time - Math.floor(time));
+	                this.lookAt(doll.at);
+	                return true;
+	            }
+	        });
+	    }
+	    dollOf(unit) {
+	        return this.dolls.find(d => d.unit == unit);
+	    }
+	    dollAt(cid) {
+	        return this.dolls.find(d => d.unit.cid == cid);
+	    }
+	    draw(o) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            switch (o.anim) {
+	                case "walk":
+	                    this.walk(this.dollOf(o.char), o.path);
+	                    break;
+	                case "shoot":
+	                    this.shoot(o.from, o.to, o.damage);
+	                    break;
+	            }
+	            yield this.waitForAnim();
+	        });
+	    }
+	    waitForAnim() {
+	        return new Promise(resolve => {
+	            this.blockingAnimationEnd = () => resolve();
+	        });
+	    }
+	    get busy() {
+	        return this.animQueue.length > 0;
+	    }
+	    initSprites() {
+	        this.ap1Sprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.strokeStyle = "#555";
+	            ctx.strokeRect(4.5, 4.5, this.tileSize - 8, this.tileSize - 8);
+	        });
+	        this.ap2Sprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.strokeStyle = "#bbb";
+	            ctx.strokeRect(4.5, 4.5, this.tileSize - 8, this.tileSize - 8);
+	        });
+	        this.hiddenSprite = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.fillStyle = `rgba(0,0,0,0.12)`;
+	            ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+	        });
+	        this.dashPattern = canvasCache([dashInterval, dashInterval], ctx => {
+	            for (let i = 0; i < dashInterval; i++) {
+	                ctx.fillRect(i, i, 1, 1);
+	            }
+	        });
+	        this.wavePattern = canvasCache([8, 8], ctx => {
+	            ctx.beginPath();
+	            ctx.arc(4.5, 2, 5, 0, Math.PI);
+	            ctx.stroke();
+	        });
+	        this.crossPattern = canvasCache([3, 3], ctx => {
+	            for (let i = 0; i < dashInterval; i++) {
+	                ctx.fillRect(dashInterval - i - 1, i, 1, 1);
+	                ctx.fillRect(i, i, 1, 1);
+	            }
+	        });
+	        this.highTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.fillStyle = "#000";
+	            ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+	        });
+	        this.lowTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.fillStyle = "#fff";
+	            ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+	            ctx.fillStyle = ctx.createPattern(this.dashPattern, "repeat");
+	            ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+	        });
+	        this.waterTile = canvasCache([this.tileSize, this.tileSize], ctx => {
+	            ctx.fillStyle = ctx.createPattern(this.wavePattern, "repeat");
+	            ctx.fillRect(0, 0, this.tileSize, this.tileSize);
+	        });
+	    }
+	}
+
+	let campaigns = [
+	    {
+	        name: "Default Campaign",
+	        version: "0.1",
+	        author: "Baturinsky, Red Knight",
+	        stage: "Red Knight's Backyard",
+	        guns: {
+	            carbine: {
+	                name: "Carbine",
+	                damage: [4, 5],
+	                damagePenaltyPerCell: 100,
+	                accuracyPenaltyMax: 20,
+	                accuracy: 60,
+	                accuracyOptimalRange: [1, 1],
+	                accuracyPenaltyPerCell: 1,
+	                damagePenaltyMax: 2,
+	                breach: 0
+	            },
+	            sniper: {
+	                name: "Sniper",
+	                damageOptimalRange: [1, 30],
+	                damagePenaltyPerCell: 0.1,
+	                accuracyOptimalRange: [10, 30],
+	                accuracyPenaltyPerCell: 1,
+	                breach: 1,
+	                aggression: -0.1
+	            },
+	            shotgun: {
+	                name: "Shotgun",
+	                damage: [6, 7],
+	                damageOptimalRange: [1, 1],
+	                damagePenaltyMax: 4,
+	                damagePenaltyPerCell: 0.3,
+	                accuracy: 80,
+	                accuracyOptimalRange: [1, 1],
+	                accuracyPenaltyPerCell: 5,
+	                accuracyPenaltyMax: 40,
+	                aggression: 0.1
+	            }
+	        },
+	        units: {
+	            g: {
+	                name: "Gunner",
+	                speed: 4,
+	                maxHP: 14,
+	                gun: "carbine"
+	            },
+	            a: {
+	                name: "Assault",
+	                speed: 6,
+	                armor: 1,
+	                gun: "shotgun"
+	            },
+	            s: {
+	                name: "Sharpshooter",
+	                maxHP: 7,
+	                def: 10,
+	                gun: "sniper"
+	            }
+	        },
+	        stages: [
+	            {
+	                name: "Backyard 13",
+	                version: "1",
+	                author: "baturinsky",
+	                terrain: `
+    ##################################################
+    #      #  a      ++++# + #    ++#  s             #
+    # #    #  +         +#   #    ++#  ++++++++      #
+    #      +  +         +#   #    ++#  ++++++++      #
+    #S#    +  +         +# * #      #                #
+    #      #  +          #   #      #                #
+    # #    #             #   #      #                #
+    #      #  +          ##a## ######                #
+    #             *                                  #
+    #                                                #
+    #A#    #             #s         #a     ~~~       #
+    #      #  +          #          #    ~~~~~~      #
+    #A#    #  #      #a  #  ###    ++   ~~~#A#~~~    #
+    #      #  #      #   #  #      ++       * ~~~    #
+    #G#    #  ########   #  #      +#    ~ # #~~     #
+    #      #             #          #    ~~~~~~~     #
+    # #    ######  ###########  #####      ~~~~      #
+    #      #++++      ++ # +        #                #
+    #S#    #+            # +   ++   +                #
+    #      #            +#          #                #
+    #         ######g    #       +  #                #
+    #         ######g    #####  #####                #
+    #                    #   g      #      #        +#
+    #      #          +  #                         ++#
+    #G#    #+    *       #+++    +++#   #     #    ++#
+    #      #++      +    #          #g               #
+    # #    ######++###########++##########    ########
+    #                 S+                             #
+    #         +              A+                      #
+    ##################################################
+    `
+	            },
+	            {
+	                name: "Red Knight's Backyard",
+	                version: "1",
+	                author: "Red Knight",
+	                terrain: `
+    ##################################################
+    ################# g+         ###++    ##      ++##
+    ################# ++         +                 +##
+    ####################               a+          +##
+    #################                   +    +      ##
+    #################* #          ++++      ##      ##
+    ####################                     +      ##
+    #################        +# + #+a##     g#   ++g##
+    ##################+##  ####################  +####
+    ###   +++  #*+  # g#   a###################      #
+    ###       a#   +# +#    ##########+#++++  #   # *#
+    #   +      ###  #  #    #        # a+++   #   ####
+    #  g+        #  #+ #       +  +  #              ##
+    #   +        ## ## #      g+  +     +           ##
+    #                  #  g #        #+  +++  #     ##
+    #    + ## ####  #     ++#  +  +  #a  +#+  #     ##
+    #    + g# +###  ####    #######  ##########     ##
+    #++  + ## ##a+  +  #   +##+a+     + #  +  ##+   ##
+    #       # +#       #++ +# + +   +g+ # ++ +#+    ##
+    #       # +#   +   #+         +++               ##
+    #   #++## +## #+# ##            +               ##
+    #   +         +         #         ++      #     ##
+    #                  #    # ####### ### ## ### +  ##
+    #   #  a+          #g   # a*##++a     #+  #  +  ##
+    #~~~~~~~~~ ~~~~~~####  ###########++######## +  ##
+    #~~~~~~~~# #~~~~~~##    a+#+ +                  ##
+    #~~~~~~~~ *              +     # ##         SAGA##
+    ###~~~~~~# #~~~~~~~~           #  #         SGGA##
+    ####~~~~~~~~~~~~~~~#           # *#         SAAA##
+    ##################################################
+    `
+	            }
+	        ]
+	    }
+	];
+
+	class Game {
+	    constructor(updateUI) {
+	        this.updateUI = updateUI;
+	        this.time = 0;
+	        this.aiSides = Game.PAI;
+	        this.momentum = [0, 0];
+	        this.renderer = new RenderSchematic(this);
+	        this.init();
+	    }
+	    static loadCampaign(id) {
+	        return parseWithNewLines(localStorage.getItem(Game.campaignPrefix + id));
+	    }
+	    static campaignById(id) {
+	        return (campaigns.find(c => c.name == id || c.name + " " + c.version == id) ||
+	            Game.loadCampaign(id) ||
+	            campaigns[0]);
+	    }
+	    static savedCampaignIds() {
+	        return Object.keys(localStorage)
+	            .filter(n => n.substr(0, Game.savePrefixLength) == Game.campaignPrefix)
+	            .map(n => n.substr(Game.savePrefixLength))
+	            .sort()
+	            .reverse();
+	    }
+	    static allCampaignIds() {
+	        return campaigns
+	            .map(c => c.name + " " + c.version)
+	            .concat(Game.savedCampaignIds());
+	    }
+	    stageByName(name) {
+	        return (this.campaign.stages.find(s => s.name == name) || this.campaign.stages[0]);
+	    }
+	    init(saveString, useState = true) {
+	        delete this.chosen;
+	        delete this.hovered;
+	        delete this.lastSelectedFaction;
+	        let save;
+	        if (saveString) {
+	            save = parseWithNewLines(saveString);
+	            if (save.campaign) {
+	                this.campaign = Game.campaignById(save.campaign);
+	            }
+	            else {
+	                this.campaign = save;
+	                this.customCampaign = true;
+	            }
+	        }
+	        if (!this.campaign)
+	            this.campaign = Game.campaignById();
+	        this.init2(this.campaign, this.stageByName(save && save.stage), save && useState ? save.state : null);
+	    }
+	    makeNotCustom() {
+	        this.customCampaign = false;
+	    }
+	    init2(campaign, stage, state) {
+	        this.campaign = campaign;
+	        this.stage = stage;
+	        this.terrain = new Terrain(this.campaign, this.stage, state || null, (animation) => this.renderer.draw(animation));
+	        this.renderer.synch();
+	        this.updateUI({ activeTeam: this.activeTeam });
+	    }
+	    initStage(stageInd) {
+	        this.init2(this.campaign, this.campaign.stages[stageInd]);
+	    }
+	    serialize(include = { state: true }) {
+	        let o = {};
+	        if (include.campaign || this.customCampaign) {
+	            Object.assign(o, this.campaign);
+	        }
+	        else {
+	            o.campaign = this.campaign.name;
+	        }
+	        if (include.state) {
+	            o.state = this.terrain.serialize();
+	        }
+	        o.stage = this.stage.name;
+	        return JSON.stringify(o, null, "  ").replace(/\\n/g, "\n");
+	    }
+	    setCanvas(canvas) {
+	        this.canvas = canvas;
+	        this.ctx = canvas.getContext("2d");
+	        if (this.renderer)
+	            this.renderer.resize();
+	    }
+	    over() {
+	        return false;
+	    }
+	    update(timeStamp) {
+	        if (!this.lastLoopTimeStamp)
+	            this.lastLoopTimeStamp = timeStamp - 0.001;
+	        let dTime = Math.min(0.02, (timeStamp - this.lastLoopTimeStamp) / 1000);
+	        this.lastLoopTimeStamp = timeStamp;
+	        this.time += dTime;
+	        this.renderer.update(dTime);
+	        this.renderer.render(this.ctx);
+	        if (this.over())
+	            this.updateUI({ over: true });
+	        if (this.chosen && !this.chosen.alive) {
+	            delete this.chosen;
+	        }
+	    }
+	    updateTooltip(tooltipAt, tooltipText) {
+	        this.updateUI({ tooltipAt, tooltipText });
+	    }
+	    click(x, y) {
+	        let cell = this.renderer.cellAtScreenPos(x, y);
+	        this.clickCell(cell);
+	        this.renderer.resetCanvasCache();
+	    }
+	    isAi(team) {
+	        return this.aiSides & (1 << team.faction);
+	    }
+	    canPlayAs(unit) {
+	        return !this.isAi(unit.team);
+	    }
+	    choose(c) {
+	        this.chosen = c;
+	        if (!c)
+	            return;
+	        this.lastChosen = this.chosen;
+	        this.chosen.calculate();
+	        this.renderer.lookAtCid(this.chosen.cid);
+	        this.renderer.resetCanvasCache();
+	    }
+	    clickCell(cell) {
+	        if (!cell)
+	            return;
+	        if (cell.unit) {
+	            if (this.chosen &&
+	                this.chosen.team == cell.unit.team &&
+	                this.canPlayAs(cell.unit)) {
+	                this.choose(cell.unit);
+	                return;
+	            }
+	            if (this.chosen && this.chosen.canDamage(cell.unit)) {
+	                this.chosen.shoot(cell);
+	                return;
+	            }
+	            if (this.chosen == cell.unit) {
+	                this.cancel();
+	            }
+	            else {
+	                if (this.canPlayAs(cell.unit))
+	                    this.choose(cell.unit);
+	            }
+	            if (this.chosen) {
+	                this.chosen.calculate();
+	            }
+	        }
+	        if (!cell.unit && this.chosen && this.chosen.reachable(cell)) {
+	            this.chosen.move(cell);
+	            this.terrain.teams[Team.RED].calculate();
+	        }
+	        this.lastSelectedFaction = this.chosen ? this.chosen.team : this.terrain.we;
+	    }
+	    cancel() {
+	        delete this.chosen;
+	        this.renderer.resetCanvasCache();
+	    }
+	    drag(dx, dy) {
+	        this.renderer.screenPos = sum(this.renderer.screenPos, [dx, dy]);
+	    }
+	    hover(x, y) {
+	        let cell = this.renderer.cellAtScreenPos(x, y);
+	        if (this.hovered == cell)
+	            return;
+	        if (!cell) {
+	            delete this.hovered;
+	            this.renderer.resetCanvasCache();
+	            return;
+	        }
+	        if (!cell)
+	            return;
+	        this.hovered = cell;
+	        let cursor = "default";
+	        if ((this.chosen && this.chosen.reachable(cell)) || cell.unit)
+	            cursor = "pointer";
+	        if (this.chosen && this.chosen.canDamage(cell.unit)) {
+	            cursor = "crosshair";
+	            this.updateTooltip(this.renderer.cidToCenterScreen(cell.cid), `${this.chosen.hitChance(cell)}% ${this.chosen.gun
+                .averageDamage(this.chosen, cell)
+                .toFixed(1)}`);
+	        }
+	        else {
+	            this.updateTooltip();
+	        }
+	        document.body.style.cursor = cursor;
+	        this.updateUI({ chosen: this.chosen, unitInfo: cell.unit });
+	        if (!this.renderer.busy)
+	            this.renderer.resetCanvasCache();
+	    }
+	    get blue() {
+	        return this.terrain.teams[Team.BLUE];
+	    }
+	    get red() {
+	        return this.terrain.teams[Team.RED];
+	    }
+	    get activeTeam() {
+	        return this.terrain.activeTeam;
+	    }
+	    endTurn(aiSides) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            this.aiSides = aiSides;
+	            if (this.isAi(this.activeTeam)) {
+	                yield this.endSideTurn();
+	            }
+	            else {
+	                do {
+	                    yield this.endSideTurn();
+	                } while (this.isAi(this.activeTeam));
+	            }
+	        });
+	    }
+	    endSideTurn() {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            delete this.chosen;
+	            let team = this.activeTeam;
+	            if (this.isAi(team))
+	                yield team.think();
+	            this.terrain.endSideTurn();
+	            this.renderer.resetCanvasCache();
+	            this.updateUI({ activeTeam: this.activeTeam });
+	        });
+	    }
+	    setAiSides(m) {
+	        this.aiSides = m;
+	    }
+	    get hoveredChar() {
+	        if (this.hovered)
+	            return this.hovered.unit;
+	    }
+	    chooseNext(delta = 1) {
+	        if (!this.chosen) {
+	            if (this.lastChosen)
+	                this.choose(this.lastChosen);
+	            else
+	                this.choose(this.terrain.we.units[0]);
+	        }
+	        else {
+	            let team = this.chosen.team.units;
+	            let next = team[(team.indexOf(this.chosen) + team.length + delta) % team.length];
+	            this.choose(next);
+	        }
+	    }
+	}
+	Game.PAI = 2;
+	Game.PP = 0;
+	Game.AIAI = 3;
+	Game.savePrefix = "2aps:";
+	Game.campaignPrefix = "2apc:";
+	Game.savePrefixLength = Game.savePrefix.length;
+	Game.timeStampLength = 13;
+	/*
+
+
+
+	*/
+
+	function dlv(obj, key, def, p) {
+		p = 0;
+		key = key.split ? key.split('.') : key;
+		while (obj && p<key.length) { obj = obj[key[p++]]; }
+		return obj===undefined ? def : obj;
+	}
+
+	/** Create an Event handler function that sets a given state property.
+	 *	@param {Component} component	The component whose state should be updated
+	 *	@param {string} key				A dot-notated key path to update in the component's state
+	 *	@param {string} eventPath		A dot-notated key path to the value that should be retrieved from the Event or component
+	 *	@returns {function} linkedStateHandler
+	 */
+	function linkState(component, key, eventPath) {
+		var path = key.split('.'),
+			cache = component.__lsc || (component.__lsc = {});
+
+		return cache[key+eventPath] || (cache[key+eventPath] = function(e) {
+			var t = e && e.target || this,
+				state = {},
+				obj = state,
+				v = typeof eventPath==='string' ? dlv(e, eventPath) : t.nodeName ? (t.type.match(/^che|rad/) ? t.checked : t.value) : e,
+				i = 0;
+			for ( ; i<path.length-1; i++) {
+				obj = obj[path[i]] || (obj[path[i]] = !i && component.state[path[i]] || {});
+			}
+			obj[path[i]] = v;
+			component.setState(state);
+		});
+	}
+
+	function Help() {
+	    return (h("div", { id: "help" },
+	        h("h3", null, "This is a prototype of a browser XCOM-like game."),
+	        h("p", null,
+	            "Currently it only has three unit types, no complex moves like overwatch, and only one map, but it will grow. It's already fully playable and closely matches XCOM conventions. Left click on your",
+	            h("span", { style: "color:blue" }, "(blue)"),
+	            " units to select, click on empty space to move or on enemy to fire. Right click to deselect. Each unit has two action points (hence the game's name), shown as \"horns\". And some Hit Points, shown as the \"beard\". Units, naturally, die when out of HP, but can replenish HPs with \"*\" pickups. When next to cover (black or dashed squares), unit is protected by it on respective side and can \"peek\" out of it to shoot or, sadly, be shot at, just like in XCOM. Black squares are high cover, granting 40% defence and blocking vision. Dashed squares are low cover, giving only 20$ defence and no LOS obsruction."),
+	        h("p", null,
+	            "When you hover the mouse over the square, you can see what is visible from it, and which enemies are flanked from (i.e. have no cover, marked",
+	            " ",
+	            h("span", { style: "background:#8f8" }, "green"),
+	            "), or",
+	            h("span", { style: "background:#f88" }, "flanking"),
+	            " this square, or",
+	            h("span", { style: "background:#ff8;" }, "both"),
+	            "."),
+	        h("p", null, "You can play against AI, it's a default mode. AI is quite competent, seeking cover and trying to flank you when possible. Also you can switch to 2 player mode, or even AI vs AI. Difference, basically, is that when you press \"End turn\", AI will make moves, depending on mode, for none, one or both sides if they have APs remained."),
+	        h("p", null, "Even more, you can play on your own map! Just switch to Edit mode, and edit text field. # is high cover, + is low cover, G, A, S are blue units and g, a, s are red units. Note that map borders should always be high cover. Don't forget to press \"Apply\" when you done.")));
+	}
+
+	let Sharpshooter = `
+Hits accurately and hard at long range, regardless of target's armor.
+Has extra defence, making him nearly untouchable when in cover. 
+Pretty helpess up close and has low HP.
+`;
+	let Assault = `
+Psycho with a shotgun. 
+Fast and even has a bit of armor to survive close quater fight a bit longer.
+Can deal a lot of damage, but only up close.
+`;
+	let Gunner = `
+Effective in any range and has extra hp.
+Quite slow.
+`;
+
+	var lang = /*#__PURE__*/Object.freeze({
+		Sharpshooter: Sharpshooter,
+		Assault: Assault,
+		Gunner: Gunner
+	});
+
+	let paused = false;
+	function mountEventsToCanvas(gui, c) {
+	    let drag = 0;
+	    c.addEventListener("mouseup", e => {
+	        drag = 0;
+	    });
+	    c.addEventListener("mousedown", e => {
+	        if (e.button == 0) {
+	            gui.game.click(e.offsetX, e.offsetY);
+	        }
+	        if (e.button == 2) {
+	            gui.game.cancel();
+	        }
+	        if (gui.state.page == "play") {
+	            if (e.button == 3) {
+	                if (location.hash == "#prev")
+	                    history.forward();
+	                else
+	                    history.pushState({}, document.title, "#prev");
+	                gui.game.chooseNext();
+	            }
+	            if (e.button == 4) {
+	                gui.game.chooseNext(-1);
+	            }
+	        }
+	    });
+	    c.addEventListener("mousemove", e => {
+	        if (e.buttons & 6) {
+	            drag++;
+	            if (drag >= 3)
+	                gui.game.drag(e.movementX, e.movementY);
+	        }
+	        gui.game.hover(e.offsetX, e.offsetY);
+	    });
+	    c.addEventListener("mouseleave", e => {
+	        console.log("leave");
+	        gui.game.hover();
+	    });
+	    c.addEventListener("mouseenter", e => { });
+	    c.addEventListener("contextmenu", function (e) {
+	        e.preventDefault();
+	    }, false);
+	}
+	class NewGame extends Component {
+	    constructor() {
+	        super(...arguments);
+	        this.state = { campaign: null, campaignInd: -1 };
+	    }
+	    render() {
+	        return (h("div", { class: "new-game row" },
+	            h("div", null,
+	                h("h4", null, "Campaigns"),
+	                this.props.campaigns.map((id, i) => (h("div", null,
+	                    h("button", { class: i == this.state.campaignInd ? "long pressed" : "long", onClick: () => this.selectCampaign(i) }, id.search(/[0-9]{13}/) == 0
+	                        ? id.substr(Game.timeStampLength)
+	                        : id))))),
+	            h("div", null, this.state.campaign && [
+	                h("h4", null, "Scenarios"),
+	                this.state.campaign.stages.map((stage, i) => (h("div", null,
+	                    h("button", { class: "long", onClick: () => this.startStage(i) }, stage.name))))
+	            ])));
+	    }
+	    selectCampaign(campaignInd) {
+	        this.setState({
+	            campaign: Game.campaignById(this.props.campaigns[campaignInd]),
+	            campaignInd
+	        });
+	    }
+	    startStage(stageInd) {
+	        this.props.startStage(this.state.campaign, this.state.campaign.stages[stageInd]);
+	    }
+	}
+	let AbilityButton = props => h("button", null,
+	    h("svg", { width: "32px", height: "32px" },
+	        h("filter", { id: "shadow", dangerouslySetInnerHTML: {
+	                __html: `<feDropShadow dx="1" dy="1" stdDeviation="1"/>`
+	            } }),
+	        h("g", { style: "fill:none; stroke:black; filter:url(#shadow);" }, props.children)));
+	let Saves = props => {
+	    let c = false;
+	    return (h("div", { class: "save" },
+	        h("button", { onClick: props.save }, "Save Game"),
+	        props.saves
+	            .sort()
+	            .reverse()
+	            .concat([null], props.campaigns.sort().reverse())
+	            .map(key => key ? (h("div", { class: "save-row" },
+	            h("button", { class: "short", onClick: () => props.del(key) }, "Del"),
+	            "\u00A0",
+	            new Date(+key.substr(0, Game.timeStampLength)).toLocaleString(),
+	            h("input", { class: "save-name", disabled: c, onChange: e => props.changeName(key, e.target.value), value: key.substr(Game.timeStampLength) }),
+	            h("button", { onClick: () => props.load(key) }, "Load"))) : (((c = true),
+	            [
+	                h("h4", null, "Custom Campaigns"),
+	                props.saveCampaign && (h("button", { onClick: props.saveCampaign }, "Save Campaign"))
+	            ])))));
+	};
+	class GUI extends Component {
+	    constructor(props) {
+	        super(props);
+	        this.state = {
+	            aiSides: 2,
+	            activeTeam: null,
+	            page: "play",
+	            game: undefined,
+	            stageEdit: "",
+	            modCampaign: true,
+	            modState: true,
+	            saves: [],
+	            campaigns: [],
+	            unitInfo: null,
+	            chosen: null,
+	            aiTurn: false,
+	            tooltipText: null,
+	            tooltipAt: null
+	        };
+	        this.canvas = createRef();
+	        this.tooltip = createRef();
+	        this.updateUI = (event) => {
+	            this.setState(event);
+	        };
+	        document.addEventListener("keydown", e => {
+	            switch (e.code) {
+	                case "Escape":
+	                    if (this.page == "play")
+	                        this.setPage("saves");
+	                    else
+	                        this.setPage("play");
+	                    break;
+	                case "Tab":
+	                    this.game.chooseNext();
+	                    break;
+	                case "KeyS":
+	                    if (e.shiftKey)
+	                        this.setPage("saves");
+	                    break;
+	            }
+	        });
+	    }
+	    get game() {
+	        return this.state.game;
+	    }
+	    get page() {
+	        return this.state.page;
+	    }
+	    gameUpdated(g) {
+	        this.setState({ game: g });
+	    }
+	    updateSaves() {
+	        let saves = [];
+	        let campaigns = [];
+	        for (let key in localStorage) {
+	            let prefix = key.substr(0, Game.savePrefixLength);
+	            if (prefix == Game.savePrefix) {
+	                saves.push(key.substr(Game.savePrefixLength));
+	            }
+	            if (prefix == Game.campaignPrefix) {
+	                campaigns.push(key.substr(Game.savePrefixLength));
+	            }
+	        }
+	        this.setState({ saves, campaigns });
+	    }
+	    updateStageEdit() {
+	        this.setState({
+	            stageEdit: this.game.serialize({
+	                campaign: this.state.modCampaign,
+	                state: this.state.modState
+	            })
+	        });
+	    }
+	    setPage(page) {
+	        if (this.state.page == "edit" && this.state.stageEdit) {
+	            this.game.init(this.state.stageEdit);
+	        }
+	        this.setState({ page: page });
+	        if (page == "edit") {
+	            this.updateStageEdit();
+	        }
+	        if (page != "play") {
+	            document.body.style.cursor = "default";
+	        }
+	    }
+	    /*apply() {
+	      this.game.init(this.state.stageEdit);
+	      this.setPage("play");
+	    }*/
+	    cancelEdit() {
+	        this.setState({ stageEdit: null });
+	        this.setPage("menu");
+	    }
+	    endTurn() {
+	        this.game.endTurn(this.state.aiSides);
+	    }
+	    componentDidMount() {
+	        this.gameUpdated(new Game(this.updateUI));
+	        this.updateSaves();
+	        let c = this.canvas.current;
+	        mountEventsToCanvas(this, c);
+	        this.game.setCanvas(c);
+	        window.onresize = () => {
+	            this.game.renderer.resize();
+	        };
+	        eachFrame(time => {
+	            if (this.game && !paused && !this.game.over())
+	                this.game.update(time);
+	        });
+	    }
+	    displayIfPage(p) {
+	        return this.state.page == p ? "display:flex" : "display:none";
+	    }
+	    toggleAI(side) {
+	        let aiSides = this.state.aiSides ^ (1 << side);
+	        this.setState({ aiSides });
+	        this.game.setAiSides(aiSides);
+	    }
+	    topButtons() {
+	        let page = this.state.page;
+	        if (page == "play") {
+	            return [
+	                ["AI", () => this.toggleAI(0)],
+	                ["AI", () => this.toggleAI(1)],
+	                [undefined, undefined],
+	                ["Menu", "menu"]
+	            ];
+	        }
+	        else {
+	            return [
+	                ["New Game", "new-game"],
+	                ["Saves", "saves"],
+	                ["Settings", "settings"],
+	                ["Editor", "edit"],
+	                ["Help", "help"],
+	                [undefined, undefined],
+	                ["Continue", "play"]
+	            ];
+	        }
+	    }
+	    saveCampaign() {
+	        let save = this.state.game.serialize({ campaign: true, state: false });
+	        let id = new Date().getTime() + this.state.game.campaign.name;
+	        localStorage.setItem(Game.campaignPrefix + id, save);
+	        this.updateSaves();
+	    }
+	    saveGame() {
+	        let save = this.state.game.serialize();
+	        let id = new Date().getTime() +
+	            this.state.game.campaign.name +
+	            ": " +
+	            this.state.game.stage.name;
+	        localStorage.setItem(Game.savePrefix + id, save);
+	        this.updateSaves();
+	    }
+	    delGame(id) {
+	        localStorage.removeItem(Game.savePrefix + id);
+	        localStorage.removeItem(Game.campaignPrefix + id);
+	        this.updateSaves();
+	    }
+	    loadGame(id) {
+	        let save = localStorage.getItem(Game.savePrefix + id);
+	        if (save)
+	            this.game.init(save);
+	        else {
+	            save = localStorage.getItem(Game.campaignPrefix + id);
+	            this.game.init(save, false);
+	        }
+	        this.setPage("play");
+	    }
+	    changeGameName(from, to) {
+	        let newHeader = Game.savePrefix + new Date().getTime() + to;
+	        let oldHeader = Game.savePrefix + from;
+	        if (!localStorage[newHeader] && newHeader != oldHeader) {
+	            localStorage.setItem(newHeader, localStorage[oldHeader]);
+	            localStorage.removeItem(oldHeader);
+	            this.updateSaves();
+	        }
+	    }
+	    startStage(campaign, stage) {
+	        this.game.init2(campaign, stage);
+	        this.game.makeNotCustom();
+	        this.setPage("play");
+	    }
+	    renderPage() {
+	        switch (this.state.page) {
+	            case "help":
+	                return h(Help, null);
+	            case "saves":
+	                return (h(Saves, { saves: this.state.saves, campaigns: this.state.campaigns, saveCampaign: this.game.customCampaign && this.saveCampaign, save: this.saveGame, load: this.loadGame, del: this.delGame, changeName: this.changeGameName }));
+	            case "new-game":
+	                return (h(NewGame, { campaigns: Game.allCampaignIds(), startStage: (campaign, stage) => this.startStage(campaign, stage) }));
+	            default:
+	                return h("div", null);
+	        }
+	    }
+	    toggleModCampaign() {
+	        this.setState({ modCampaign: !this.state.modCampaign });
+	        this.updateStageEdit();
+	    }
+	    toggleModState() {
+	        this.setState({ modState: !this.state.modState });
+	        this.updateStageEdit();
+	    }
+	    sideButtonText(i) {
+	        let ai = this.state.aiSides & (1 << i);
+	        let text = h("span", null, ai ? "AI" : "Player");
+	        if (this.state.activeTeam && this.state.activeTeam.faction == i)
+	            text = h("u", null, text);
+	        return text;
+	    }
+	    render() {
+	        let state = this.state;
+	        let page = state.page;
+	        let cursor = svgImg(`width="32" height="32" fill="none" stroke="black"`, `<circle r="12" cx="16" cy="16" /><path d="M16 0 v32 M0 16 h32" />`);
+	        return (h("div", { style: `cursor:${cursor} 16 16, auto;` },
+	            h("div", { class: "center-screen", style: this.displayIfPage("play") },
+	                h("canvas", { ref: this.canvas, id: "main" })),
+	            h("div", { class: "center-horisontal" },
+	                h("div", { id: "editor", style: this.displayIfPage("edit") },
+	                    h("textarea", { onChange: linkState(this, "stageEdit"), cols: 100, rows: 40, value: this.state.stageEdit, id: "edit-area" }),
+	                    h("div", { class: "row" },
+	                        h("label", null,
+	                            h("input", { type: "checkbox", checked: state.modCampaign, onChange: this.toggleModCampaign }),
+	                            "Modify Campaign"),
+	                        h("label", null,
+	                            h("input", { type: "checkbox", checked: state.modState, onChange: this.toggleModState }),
+	                            "Modify State"),
+	                        h("span", { class: "flex-spacer" }),
+	                        h("button", { id: "endb", onClick: e => this.cancelEdit() }, "Cancel"))),
+	                [this.renderPage()]),
+	            h("div", { class: "top-buttons row" }, this.topButtons().map(([text, action], i) => text ? (h("button", { class: "medium" +
+	                    (page == "play" && i <= 2 ? " side" + i : "") +
+	                    (page == action ? " pressed" : ""), onClick: e => action instanceof Function ? action() : this.setPage(action) }, page == "play" && i <= 2 ? this.sideButtonText(i) : text)) : (h("span", { class: "flex-spacer" })))),
+	            state.unitInfo && page == "play" && (h(UnitInfo, { unit: state.unitInfo, chosen: this.state.chosen })),
+	            h("div", { class: "bottom-buttons row" },
+	                h("span", { class: "flex-spacer" }),
+	                page == "play" && !state.aiTurn && (h("button", { id: "endb", onClick: e => this.endTurn() }, "End Turn"))),
+	            h("div", { class: "ability-buttons" },
+	                h(AbilityButton, null,
+	                    h("circle", { r: "12", cx: "16", cy: "16" }),
+	                    h("path", { d: "M16,0 v32 M0 16 h32" })),
+	                h(AbilityButton, null,
+	                    h("circle", { r: "10", cx: "16", cy: "16" }),
+	                    h("circle", { r: "6", cx: "16", cy: "16" }),
+	                    h("path", { d: "M0,16 Q16,-4 32,16 Q16,36 0,16" })),
+	                h(AbilityButton, null,
+	                    h("path", { d: "M24,4 L0,16 L24,28 M16,8 a10,10 45 0 1 0,16 v-16" })),
+	                h(AbilityButton, null,
+	                    h("path", { d: "M4,0 q24,0 24,12 h-4 q0,-6 -14,-6 l2,8 h-4 L4,0 M16,28 l-8,-8 l16,0 l-8,8" })),
+	                h(AbilityButton, null,
+	                    h("path", { d: "M4,0 q24,0 24,12 h-4 q0,-6 -14,-6 l2,8 h-4 L4,0 M16,20 l-8,8 l16,0 l-8,-8" })),
+	                h(AbilityButton, null,
+	                    h("path", { d: "M4,4 h24 v24 h-24 v-24 m0,8 h25 m-16,0 c0,6 6,6 6,0" }))),
+	            h("div", { id: "tooltip", style: state.tooltipAt
+	                    ? `display:block; left:${state.tooltipAt[0] +
+                        30 +
+                        this.canvas.current.offsetLeft}; top:${state.tooltipAt[1]}`
+	                    : `display:none` }, state.tooltipText)));
+	    }
+	}
+	__decorate([
+	    bind
+	], GUI.prototype, "saveCampaign", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "saveGame", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "delGame", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "loadGame", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "changeGameName", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "toggleModCampaign", null);
+	__decorate([
+	    bind
+	], GUI.prototype, "toggleModState", null);
+	let UnitInfo = ({ unit, chosen }) => {
+	    let accMods = {};
+	    let hitChance = 0;
+	    if (unit && chosen && unit != chosen)
+	        hitChance = chosen.hitChance(unit.cell, unit, false, accMods);
+	    return (h("div", { id: "unitInfo" },
+	        unit.name.toUpperCase(),
+	        " ",
+	        h("b", null, unit.hp),
+	        "HP ",
+	        h("b", null, unit.ap),
+	        "AP",
+	        " ",
+	        h("b", null, unit.stress),
+	        "SP",
+	        h("br", null),
+	        "velocity",
+	        renderV2(unit.velocity),
+	        " focus",
+	        renderV2(unit.focus),
+	        h("br", null),
+	        hitChance && (h("div", null,
+	            "Hit Chance: ",
+	            h("b", null, hitChance),
+	            Object.keys(accMods)
+	                .filter(key => accMods[key])
+	                .map(key => (h("span", { class: "nobr" },
+	                " ",
+	                key,
+	                h("b", null, signed(accMods[key]))))))),
+	        lang[unit.name]));
+	};
+	function renderV2(v) {
+	    let angle = (Math.atan2(v[1], v[0]) / Math.PI) * 180;
+	    let length$1 = Math.round(length(v));
+	    return (h("span", null,
+	        h("svg", { width: "10px", height: "10px" },
+	            h("path", { d: "M5 5 l 0 -5 l 5 5 l -5 5 l 0 -4 l -5 0 l 0 -2 l 5 0 ", transform: `rotate(${angle} 5 5)` })),
+	        h("b", null, length$1)));
+	}
+
+	window.onload = function () {
+	    let el = render(h(GUI, null), document.body);
+	};
+
+}());

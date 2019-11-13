@@ -262,7 +262,7 @@ export default class Unit {
 
     let dir = v2.norm(v2.sub(tcell.at, this.at));
     this.focusAccuracyBonus(tcell.at)
-    this.focus = v2.scale(dir, Math.max(this.gun.maxFocus, 10 + this.focusAccuracyBonus(tcell.at)));
+    this.focus = v2.scale(dir, Math.min(this.gun.maxFocus, 10 + this.focusAccuracyBonus(tcell.at)));
     this.velocity = [0, 0];
 
     return true;
@@ -339,9 +339,9 @@ export default class Unit {
     await this.animateWalk(this.pathTo(to));
     this.teleport(to);
 
-    if (this.cell.goody) {
+    if (this.cell.items.length > 0) {
       this.hp = this.maxHP;
-      this.cell.goody = 0;
+      this.cell.items = [];
     }
 
     return true;

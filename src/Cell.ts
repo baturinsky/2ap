@@ -3,6 +3,7 @@ import { canvasCache, Context2d } from "./Util";
 import Terrain from "./Terrain";
 import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
+import Item from "./Item";
 
 export default class Cell {
   rfov = new Set<number>(); /* raw FOV, without XCOM tricks */
@@ -11,8 +12,8 @@ export default class Cell {
   povs: Cell[] = [];
   peeked: Cell[] = [];
   cover: number[];
-  goody: number;
   hole: boolean;
+  items: Item[] = [];
 
   constructor(
     public terrain: Terrain,
@@ -82,7 +83,7 @@ export default class Cell {
   seal() {
     this.obstacle = 2;
     delete this.unit;
-    this.goody = 0;
+    this.items = []
   }
 
   get opaque() {
@@ -126,4 +127,23 @@ export default class Cell {
       c.peeked.push(this);
     }
   }
+
+  serializable(){
+    return this.items.length>0;
+  }
+
+  serialize(){
+    return {items:this.items.map(i =>i.serialize())}
+  }
+
+  deserialize(data:{items:string[]}){
+    for(let item of data.items){
+      this.addItem(Item.deserialize(item))
+    }
+  }
+
+  addItem(item:Item){
+    this.items.push(item);
+  }
+
 }

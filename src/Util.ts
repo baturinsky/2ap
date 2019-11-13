@@ -104,3 +104,7 @@ export function parseWithNewLines(json: string) {
 export function signed(n: number):string {
   return (n > 0 ? "+":"") + n;
 }
+
+export function svgImg(attrs:string, body:string){
+  return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>')`;
+}

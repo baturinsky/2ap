@@ -6,6 +6,7 @@ import shadowcast from "./sym-shadowcast";
 import Team from "./Team";
 import Gun from "./Gun";
 import { StageConf, CampaignConf, StateConf } from "./Campaigns";
+import Item from "./Item";
 
 type V2 = [number, number];
 const sightRange = 20;
@@ -38,13 +39,14 @@ export default class Terrain {
 
   rni = random(1);
 
-  activeTeam:Team;
+  activeTeam: Team;
 
   rnf = () => (this.rni() % 1e9) / 1e9;
 
   serialize() {
     return {
       teams: this.teams.map(t => t.serialize()),
+      cells: this.cells.filter(c => c.serializable()).map(o => o.serialize()),
       activeTeam: this.activeTeam.faction
     };
   }
@@ -76,14 +78,10 @@ export default class Terrain {
       for (let x = 0; x < this.w; x++) {
         let cid = x + y * this.w;
         let symbol = line[x] || " ";
-        let cell = new Cell(
-          this,
-          cid,
-          ["+", "#"].indexOf(symbol) + 1
-        );
-        if(this.campaign.units[symbol.toLowerCase()])
-          new Unit(cell, { symbol, cid })
-        if (symbol == "*") cell.goody = 1;
+        let cell = new Cell(this, cid, ["+", "#"].indexOf(symbol) + 1);
+        if (this.campaign.units[symbol.toLowerCase()])
+          new Unit(cell, { symbol, cid });
+        if (symbol == "*") cell.addItem(new Item(Item.MEDKIT));
         if (symbol == "~") cell.hole = true;
         this.cells[cid] = cell;
       }
@@ -105,9 +103,9 @@ export default class Terrain {
       if (!c.obstacle) c.calculatePovAnCover();
     }
 
-    console.log(this.w)
-    console.log(this.h)
-    console.time("FOV")
+    console.log(this.w);
+    console.log(this.h);
+    console.time("FOV");
 
     for (let c of this.cells) {
       if (!c.obstacle) {
@@ -116,7 +114,7 @@ export default class Terrain {
       }
     }
 
-    console.timeEnd("FOV")
+    console.timeEnd("FOV");
 
     for (let c of this.cells) {
       if (!c.obstacle) {
@@ -125,8 +123,7 @@ export default class Terrain {
       }
     }
 
-
-    this.activeTeam = this.teams[0]
+    this.activeTeam = this.teams[0];
 
     console.log(this);
   }
@@ -135,14 +132,12 @@ export default class Terrain {
     this.cells[this.cid(x, y)].seal();
   }
 
-
   constructor(
     public campaign: CampaignConf,
     public stage: StageConf,
     state: any,
     public animate: (any) => Promise<void>
   ) {
-
     for (let gunId in campaign.guns) {
       campaign.guns[gunId] = new Gun(campaign.guns[gunId]);
     }
@@ -152,11 +147,13 @@ export default class Terrain {
   }
 
   loadState(state: StateConf) {
-    if(!state || !state.teams)
-      return;
+    if (!state || !state.teams) return;
 
     this.units = [];
-    this.cells.forEach(c => delete c.unit);
+    this.cells.forEach(c => {
+      delete c.unit;
+      c.items = [];
+    });
 
     this.teams = state.teams.map((t, i) => {
       let team = new Team(this, i);
@@ -167,7 +164,7 @@ export default class Terrain {
       return team;
     });
 
-    this.activeTeam = this.teams[state.activeTeam]
+    this.activeTeam = this.teams[state.activeTeam];
   }
 
   calcDists(fromi: number) {
@@ -305,11 +302,9 @@ export default class Terrain {
     return this.teams[Team.BLUE];
   }
 
-  endSideTurn(){
+  endSideTurn() {
     this.activeTeam.endTurn();
 
-    this.teams[
-      (this.activeTeam.faction + 1) % this.teams.length
-    ].beginTurn();
+    this.teams[(this.activeTeam.faction + 1) % this.teams.length].beginTurn();
   }
 }
