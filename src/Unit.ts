@@ -7,6 +7,8 @@ import Team from "./Team";
 import { UnitConf, UnitState } from "./Campaigns";
 import { V2 } from "./v2";
 
+const velocityAccuracyScale = 4*0, velocityDefenceScale = 4*0;
+
 export default class Unit {
   static readonly EYE = -1;
   static readonly GUNNER = 1;
@@ -158,11 +160,11 @@ export default class Unit {
   }
 
   velocityAccuracyBonus(target: V2) {
-    return -Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+    return -Math.round(Math.abs(this.perpendicularVelocity(target)) * velocityAccuracyScale);
   }
 
   velocityDefenceBonus(target: V2) {
-    return Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+    return Math.round(Math.abs(this.perpendicularVelocity(target)) * velocityDefenceScale);
   }
 
   focusAccuracyBonus(target: V2) {
@@ -202,8 +204,10 @@ export default class Unit {
     bonuses.cover = -cover * 25;
     bonuses.dodge = -tunit.def;
     bonuses.distance = -this.gun.accuracyPenalty(this.dist(tunit));
+    
     bonuses.ownVelocity = this.velocityAccuracyBonus(tat);
-    bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
+     bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
+
     bonuses.ownFocus = this.focusAccuracyBonus(tat);
     bonuses.targetFocus = -tunit.focusDefenceBonus(this.at);
 

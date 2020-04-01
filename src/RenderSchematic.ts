@@ -380,12 +380,13 @@ export default class RenderSchematic {
       }
     }
 
+    ctx.save();
     ctx.beginPath();
     ctx.fillStyle = unit.strokeColor;
-    ctx.textAlign = "center";
-    ctx.font = `bold ${0.5}pt Courier`;
-    ctx.fillText(unit.symbol.toUpperCase(), 0.5, 0.66);
+    ctx.font = `bold 0.5pt Courier`;
+    ctx.fillText(unit.symbol.toUpperCase(), 0.29, 0.66);
     ctx.stroke();
+    ctx.restore();
 
     if (unit.focused) {
       ctx.save();

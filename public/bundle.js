@@ -701,6 +701,7 @@
 	function createRef() {
 		return {};
 	}
+	//# sourceMappingURL=preact.mjs.map
 
 	/*! *****************************************************************************
 	Copyright (c) Microsoft Corporation. All rights reserved.
@@ -1109,6 +1110,7 @@
 	Team.BLUE = 0;
 	Team.RED = 1;
 
+	const velocityAccuracyScale = 4 * 0, velocityDefenceScale = 4 * 0;
 	class Unit {
 	    constructor(cell, o) {
 	        this.cell = cell;
@@ -1216,10 +1218,10 @@
 	        return p;
 	    }
 	    velocityAccuracyBonus(target) {
-	        return -Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+	        return -Math.round(Math.abs(this.perpendicularVelocity(target)) * velocityAccuracyScale);
 	    }
 	    velocityDefenceBonus(target) {
-	        return Math.round(Math.abs(this.perpendicularVelocity(target)) * 4);
+	        return Math.round(Math.abs(this.perpendicularVelocity(target)) * velocityDefenceScale);
 	    }
 	    focusAccuracyBonus(target) {
 	        if (!this.focused)
@@ -2058,12 +2060,13 @@
 	                ctx.fill();
 	            }
 	        }
+	        ctx.save();
 	        ctx.beginPath();
 	        ctx.fillStyle = unit.strokeColor;
-	        ctx.textAlign = "center";
-	        ctx.font = `bold ${0.5}pt Courier`;
-	        ctx.fillText(unit.symbol.toUpperCase(), 0.5, 0.66);
+	        ctx.font = `bold 0.5pt Courier`;
+	        ctx.fillText(unit.symbol.toUpperCase(), 0.29, 0.66);
 	        ctx.stroke();
+	        ctx.restore();
 	        if (unit.focused) {
 	            ctx.save();
 	            ctx.translate(0.5, 0.5);
@@ -2757,6 +2760,7 @@
 			component.setState(state);
 		});
 	}
+	//# sourceMappingURL=linkstate.es.js.map
 
 	function Help() {
 	    return (h("div", { id: "help" },
@@ -2876,7 +2880,7 @@ Quite slow.
 	        h("filter", { id: "shadow", dangerouslySetInnerHTML: {
 	                __html: `<feDropShadow dx="1" dy="1" stdDeviation="1"/>`
 	            } }),
-	        h("g", { style: "fill:none; stroke:black; filter:url(#shadow);" }, props.children)));
+	        h("g", { style: "fill:none; stroke:#999; filter:url(#shadow);" }, props.children)));
 	let Saves = props => {
 	    let c = false;
 	    return (h("div", { class: "save" },

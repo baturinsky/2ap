@@ -129,7 +129,7 @@ let AbilityButton = props =>
           __html: `<feDropShadow dx="1" dy="1" stdDeviation="1"/>`
         }}
       />
-      <g style="fill:none; stroke:black; filter:url(#shadow);">
+      <g style="fill:none; stroke:#999; filter:url(#shadow);">
         {props.children}
       </g>
     </svg>
@@ -555,7 +555,6 @@ export class GUI extends Component {
           <AbilityButton>
             <path d="M4,4 h24 v24 h-24 v-24 m0,8 h25 m-16,0 c0,6 6,6 6,0" />
           </AbilityButton>
-
         </div>
 
         <div
