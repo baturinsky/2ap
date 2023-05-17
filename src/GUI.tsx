@@ -1,7 +1,7 @@
 export let mouseAt: [number, number];
 import { eachFrame, bind, signed, svgImg } from "./Util";
 import Game from "./Game";
-import { h, render, Component, createRef, FunctionalComponent } from "preact";
+import { h, render, Component, createRef, FunctionalComponent, JSX } from "preact";
 import linkState from "linkstate";
 import Help from "./Help";
 import { V2 } from "./v2";
@@ -50,7 +50,6 @@ function mountEventsToCanvas(gui: GUI, c: HTMLCanvasElement) {
   });
 
   c.addEventListener("mouseleave", e => {
-    console.log("leave");
     gui.game.hover();
   });
 
@@ -226,15 +225,18 @@ export class GUI extends Component {
   }
 
   get game() {
-    return this.state.game;
+    return this._game;
   }
 
   get page() {
     return this.state.page;
   }
 
-  gameUpdated(g: Game) {
-    this.setState({ game: g });
+  _game:Game;
+
+  gameUpdated(game: Game) {
+    this._game = game;
+    this.setState({ game });
   }
 
   updateSaves() {
@@ -309,7 +311,10 @@ export class GUI extends Component {
 
     let c = this.canvas.current;
     mountEventsToCanvas(this, c);
-    this.game.setCanvas(c);
+
+    //setTimeout(()=>this.game.setCanvas(c), 1);
+
+    this.game.setCanvas(c)
 
     window.onresize = () => {
       this.game.renderer.resize();

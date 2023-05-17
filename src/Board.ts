@@ -7,11 +7,12 @@ import Team from "./Team";
 import Gun from "./Gun";
 import { StageConf, CampaignConf, StateConf } from "./Campaigns";
 import Item from "./Item";
+import { Action } from "./Action";
 
 type V2 = [number, number];
 const sightRange = 20;
 
-export default class Terrain {
+export default class Board {
   static readonly dirs8: V2[] = [
     [0, -1],
     [1, -1],
@@ -35,7 +36,7 @@ export default class Terrain {
 
   victor: Team;
 
-  terrainString: string;
+  boardString: string;
 
   rni = random(1);
 
@@ -51,10 +52,10 @@ export default class Terrain {
     };
   }
 
-  init(terrainString: string) {
-    this.terrainString = terrainString;
+  init(boardString: string) {
+    this.boardString = boardString;
 
-    let lines = terrainString
+    let lines = boardString
       .split("\n")
       .map(s => s.trim())
       .filter(s => s.length > 0);
@@ -97,10 +98,10 @@ export default class Terrain {
       this.seal(this.w - 1, i);
     }
 
-    this.dir8Deltas = Terrain.dirs8.map(v => v[0] + v[1] * this.w);
+    this.dir8Deltas = Board.dirs8.map(v => v[0] + v[1] * this.w);
 
     for (let c of this.cells) {
-      if (!c.obstacle) c.calculatePovAnCover();
+      if (!c.obstacle) c.calculatePovAndCover();
     }
 
     console.log(this.w);
@@ -109,7 +110,7 @@ export default class Terrain {
 
     for (let c of this.cells) {
       if (!c.obstacle) {
-        c.calculatePovAnCover();
+        c.calculatePovAndCover();
         c.calculateFov();
       }
     }
@@ -135,13 +136,13 @@ export default class Terrain {
   constructor(
     public campaign: CampaignConf,
     public stage: StageConf,
-    state: any,
-    public animate: (any) => Promise<void>
+    state: StateConf,
+    public animate: (actions: Action[]) => Promise<void>
   ) {
     for (let gunId in campaign.guns) {
       campaign.guns[gunId] = new Gun(campaign.guns[gunId]);
     }
-    this.init(this.stage.terrain);
+    this.init(this.stage.board);
 
     if (state) this.loadState(state);
   }
@@ -172,7 +173,7 @@ export default class Terrain {
     dists[fromi] = [0, -1];
     let todo: number[] = [fromi];
 
-    let char = this.cells[fromi].unit;
+    let unit = this.cells[fromi].unit;
 
     while (todo.length > 0) {
       let curi = todo.shift();
@@ -184,7 +185,7 @@ export default class Terrain {
         let nexti = this.dir8Deltas[dir] + curi;
         let nextc = this.cells[nexti];
 
-        if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(char)))
+        if (!nextc.passable || (nextc.unit && !nextc.unit.friendly(unit)))
           continue;
 
         if (
@@ -216,10 +217,12 @@ export default class Terrain {
     return dists;
   }
 
+  /** cell id within map bounds */
   safeCid(x: number, y: number) {
     if (x >= 0 && y >= 0 && x < this.w && y < this.h) return this.cid(x, y);
   }
 
+  /** cell id (position in array) */
   cid(x: number, y: number) {
     return x + y * this.w;
   }
@@ -228,12 +231,13 @@ export default class Terrain {
     return this.cells[this.cid(x, y)];
   }
 
-  fromCid(ind: number): V2 {
+  /** [x,y] for given cid */
+  cellIdToV2(ind: number): V2 {
     return [ind % this.w, idiv(ind, this.w)];
   }
 
   calculateFov(cid: number) {
-    let [x, y] = this.fromCid(cid);
+    let [x, y] = this.cellIdToV2(cid);
     let visibility = new Set<number>();
     shadowcast(
       x,
@@ -241,14 +245,14 @@ export default class Terrain {
       (x, y) => !this.cellAt(x, y).opaque,
       (x, y) => {
         for (let pov of this.cells[this.cid(x, y)].peeked)
-          visibility.add(pov.cid);
+          visibility.add(pov.id);
       }
     );
     return visibility;
   }
 
   calculateDirectFov(cid: number) {
-    let [x, y] = this.fromCid(cid);
+    let [x, y] = this.cellIdToV2(cid);
     let visibility = new Set<number>();
     shadowcast(
       x,
@@ -270,8 +274,9 @@ export default class Terrain {
     return obstacles;
   }
 
+  /**Is "target" in cover from "from"*/
   cover(from: Cell, target: Cell) {
-    let visible = from.xfov.has(target.cid);
+    let visible = from.xfov.has(target.id);
 
     if (!visible) return -1;
 
@@ -284,7 +289,7 @@ export default class Terrain {
       for (let i = 0; i < 4; i++) {
         let cover = target.cover[i];
         if (cover <= bestCover) continue;
-        let dot = v2.dot(Terrain.dirs8[i * 2], delta);
+        let dot = v2.dot(Board.dirs8[i * 2], delta);
         if (dot < -0.001) bestCover = cover;
       }
 

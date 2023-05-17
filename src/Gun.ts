@@ -31,7 +31,6 @@ export default class Gun {
     if (dist > this.damageOptimalRange[1]) {
       diff = dist - this.damageOptimalRange[1];
     }
-    //debugger;
     return Math.floor(Math.min(this.damagePenaltyMax, this.damagePenaltyPerCell * diff));
   }
 
@@ -43,7 +42,6 @@ export default class Gun {
     if (dist > this.accuracyOptimalRange[1]) {
       diff = dist - this.accuracyOptimalRange[1];
     }
-    //debugger;
     return Math.floor(Math.min(this.accuracyPenaltyMax, this.accuracyPenaltyPerCell * diff));
   }
 

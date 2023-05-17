@@ -1,15 +1,16 @@
 import Gun from "./Gun";
-import { idiv, max } from "./Util";
-import Terrain from "./Terrain";
+import { idiv, max, runPromisesInOrder } from "./Util";
 import Cell from "./Cell";
 import * as v2 from "./v2";
 import Team from "./Team";
 import { UnitConf, UnitState } from "./Campaigns";
 import { V2 } from "./v2";
+import { Action, ShootAction, WalkAction } from "./Action";
 
-const velocityAccuracyScale = 4*0, velocityDefenceScale = 4*0;
+const velocityAccuracyScale = 4 * 0, velocityDefenceScale = 4 * 0;
 
-export default class Unit {
+
+export default class Unit implements UnitState {
   static readonly EYE = -1;
   static readonly GUNNER = 1;
   static readonly ASSAULT = 2;
@@ -45,12 +46,13 @@ export default class Unit {
   team: Team;
   gun: Gun;
 
-  get terrain() {
-    return this.cell.terrain;
+  get board() {
+    return this.cell.board;
   }
 
+  /** ID of the cell */
   get cid() {
-    return this.cell.cid;
+    return this.cell.id;
   }
 
   serialize() {
@@ -62,44 +64,44 @@ export default class Unit {
       exhaustion: this.exhaustion,
       stress: this.stress,
       focus: this.focus,
-      velocity: this.velocity
-    };
+      velocity: this.velocity,
+      faction: this.team.faction,
+      maxHP: this.maxHP
+    } as UnitState;
   }
 
-  static readonly saveFields = "hp ap exhaustion stress focus velocity".split(
-    " "
-  );
+  static readonly saveFields = "hp ap exhaustion stress focus velocity".split(" ");
 
   constructor(public cell: Cell, o: UnitState) {
     this.symbol = o.symbol.toLowerCase();
     cell.unit = this;
 
-    let terrain = cell.terrain;
-    this.terrain.units.push(this);
+    let board = cell.board;
+    this.board.units.push(this);
 
-    let conf = terrain.campaign.units[this.symbol];
+    let conf = board.campaign.units[this.symbol];
 
     Object.assign(this, conf);
     this.hp = this.maxHP;
 
-    console.assert(conf);
+    console.assert(conf != null, conf);
 
     this.team =
-      terrain.teams[o.symbol.toUpperCase() == o.symbol ? Team.BLUE : Team.RED];
+      board.teams[o.symbol.toUpperCase() == o.symbol ? Team.BLUE : Team.RED];
 
     for (let key of Unit.saveFields) {
       if (key in o) this[key] = o[key];
     }
 
-    this.gun = this.terrain.campaign.guns[conf.gun];
+    this.gun = this.board.campaign.guns[conf.gun];
   }
 
   get blue() {
-    return this.team == this.terrain.we;
+    return this.team == this.board.we;
   }
 
   pathTo(to: Cell): Cell[] {
-    let cid = to.cid;
+    let cid = to.id;
     let path = [cid];
     while (true) {
       cid = this.dists[cid][1];
@@ -107,18 +109,14 @@ export default class Unit {
       path.push(cid);
     }
 
-    return path.reverse().map(cid => this.terrain.cells[cid]);
-  }
-
-  get strokeColor() {
-    return this.blue ? "#00a" : "#a00";
+    return path.reverse().map(cid => this.board.cells[cid]);
   }
 
   get x() {
-    return this.cid % this.terrain.w;
+    return this.at[0];
   }
   get y() {
-    return idiv(this.cid, this.terrain.w);
+    return this.at[1];
   }
 
   reachable(cell: Cell) {
@@ -126,7 +124,7 @@ export default class Unit {
   }
 
   calculateDists() {
-    this.dists = this.terrain.calcDists(this.cid);
+    this.dists = this.board.calcDists(this.cid);
   }
 
   calculate() {
@@ -134,16 +132,16 @@ export default class Unit {
   }
 
   cover(target: Cell) {
-    return this.terrain.cover(this.cell, target);
+    return this.board.cover(this.cell, target);
   }
 
   get at() {
-    return this.terrain.fromCid(this.cid);
+    return this.board.cellIdToV2(this.cid);
   }
 
   apCost(cell: Cell) {
     if (!this.dists) return Number.MAX_VALUE;
-    let l = this.dists[cell.cid][0];
+    let l = this.dists[cell.id][0];
     let moves = Math.ceil(l / this.speed);
     return moves;
   }
@@ -179,7 +177,8 @@ export default class Unit {
     return this.focusAccuracyBonus(target);
   }
 
-  hitChance(tcell:Cell, tunit?:Unit, direct = false, bonuses?:{
+  /**Chance to hit target. 0 if hit is impossible. "direct" means target will not step out (is moving) */
+  hitChance(tcell: Cell, tunit?: Unit, direct = false, bonuses?: {
     cover?: number;
     dodge?: number;
     distance?: number;
@@ -189,44 +188,44 @@ export default class Unit {
     ownFocus?: number;
     targetFocus?: number;
   }): number {
-    if(!tunit)
+    if (!tunit)
       tunit = tcell.unit;
-    if(tunit == this)
+    if (tunit == this)
       return 0;
     let fov = direct ? this.cell.dfov : this.cell.xfov;
     let tat = tcell.at;
-    if (!fov.has(tcell.cid)) return 0;
+    if (!fov.has(tcell.id)) return 0;
     let cover = this.cover(tcell || tunit.cell);
     if (cover == -1) return 0;
-    if(!bonuses)
+    if (!bonuses)
       bonuses = {}
     bonuses.accuracy = this.gun.accuracy;
     bonuses.cover = -cover * 25;
     bonuses.dodge = -tunit.def;
     bonuses.distance = -this.gun.accuracyPenalty(this.dist(tunit));
-    
+
     bonuses.ownVelocity = this.velocityAccuracyBonus(tat);
-     bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
+    bonuses.targetVelocity = -tunit.velocityDefenceBonus(this.at);
 
     bonuses.ownFocus = this.focusAccuracyBonus(tat);
     bonuses.targetFocus = -tunit.focusDefenceBonus(this.at);
 
-    if(bonuses.cover < bonuses.targetVelocity)
+    if (bonuses.cover < bonuses.targetVelocity)
       bonuses.targetVelocity = 0;
     else
       bonuses.cover = 0;
 
-    console.log(JSON.stringify(bonuses));
+    //console.log(JSON.stringify(bonuses));
 
     let chance = Math.round(Object.values(bonuses).reduce((a, b) => a + b));
     return chance;
   }
 
   die() {
-    this.terrain.units = this.terrain.units.filter(c => c.hp > 0);
+    this.board.units = this.board.units.filter(c => c.hp > 0);
     delete this.cell.unit;
     if (this.team.units.length == 0) {
-      this.terrain.declareVictory(this.team.enemy);
+      this.board.declareVictory(this.team.enemy);
     }
   }
 
@@ -235,31 +234,26 @@ export default class Unit {
     if (this.hp <= 0) {
       this.die();
     }
-
-    this.onChange();
   }
 
-  onChange() {
-    this.terrain.animate({ char: this });
-  }
-
-  async shoot(tcell: Cell) {
-    if (!tcell) return false;
+  /** Tries to shoot at target at cell, return null if shot is impossible,
+   * {miss:true} for miss, {dmg:number} for hit
+  */
+  shoot(tcell: Cell): Action[] {    
+    if(this.ap <= 0 || !tcell) return null;
     let target = tcell.unit;
-    if (!target) return false;
+    if (!target) return null;
 
     let chance = this.hitChance(tcell);
-    if (chance == 0) return false;
+    if (chance == 0) return [this.shootAction(tcell, null)];
 
-    let success = this.terrain.rni() % 100 < chance;
+    let success = this.board.rni() % 100 < chance;
 
     this.ap = 0;
-    let dmg = 0;
+    let dmg = null;
     if (success) {
-      dmg = this.gun.damageRoll(this, target.cell, this.terrain.rnf);
+      dmg = this.gun.damageRoll(this, target.cell, this.board.rnf);
     }
-
-    await this.animateShoot(target.cid, dmg);
 
     target.takeDamage(dmg);
     if (target.hp <= 0) this.team.calculate();
@@ -267,12 +261,16 @@ export default class Unit {
     let dir = v2.norm(v2.sub(tcell.at, this.at));
     this.focusAccuracyBonus(tcell.at)
     this.focus = v2.scale(dir, Math.min(this.gun.maxFocus, 10 + this.focusAccuracyBonus(tcell.at)));
-    this.velocity = [0, 0];
+    this.velocity = [0, 0];    
 
-    return true;
+    return [this.shootAction(tcell, dmg)];
   }
 
-  teleport(to: Cell) {
+  updateAction(){
+    return { action: "state", unit: this };
+  }
+
+  changePosition(to: Cell) {
     if (this.cell) {
       if (this.cell == to) return;
       delete this.cell.unit;
@@ -308,8 +306,8 @@ export default class Unit {
     return v2.round(v2.norm(delta, this.speed));
   }
 
-  async move(to: Cell) {
-    if (to == this.cell || !to) return false;
+  move(to: Cell) {
+    if (to == this.cell || !to) return null;
     this.ap -= this.apCost(to);
 
     let path = this.pathTo(to);
@@ -318,6 +316,10 @@ export default class Unit {
     this.focus = v2.norm(this.velocity, 10)
 
     let enemies = this.team.enemy.units;
+
+    let actions: Action[] = [];
+
+    /** Optimal moment to reactionfire this unit */
     let rfPoints = [] as { moment: number; enemy: Unit }[];
     for (let enemy of enemies) {
       if (enemy.ap == 0) continue;
@@ -332,37 +334,44 @@ export default class Unit {
 
     rfPoints = rfPoints.sort((a, b) => (a.moment > b.moment ? 1 : -1));
 
-    for (let owPoint of rfPoints) {
-      let place = path[owPoint.moment];
-      await this.animateWalk(this.pathTo(place));
-      this.teleport(place);
-      await owPoint.enemy.shoot(place);
-      if (!this.alive) return true;
+    for (let rfPoint of rfPoints) {
+      let place = path[rfPoint.moment];
+      actions.push(this.walkAction(this.pathTo(place)))
+      this.changePosition(place);
+      let shot = rfPoint.enemy.shoot(place);
+      if (shot){
+        actions = actions.concat(shot);
+      }
+      if (!this.alive) return actions;
     }
 
-    await this.animateWalk(this.pathTo(to));
-    this.teleport(to);
+    actions.push(this.walkAction(this.pathTo(to)));
+    this.changePosition(to);
 
     if (this.cell.items.length > 0) {
       this.hp = this.maxHP;
       this.cell.items = [];
     }
 
-    return true;
+    return actions;
   }
 
-  async animateWalk(path: Cell[]) {
-    if (path.length <= 1) return;
-    await this.terrain.animate({ anim: "walk", char: this, path });
+  walkAction(path: Cell[]) {
+    if (path.length <= 1) return null;
+    return { action: "walk", unit: this, path } as WalkAction;
   }
 
-  async animateShoot(tcid: number, damage: number) {
-    await this.terrain.animate({
-      anim: "shoot",
-      from: this.cid,
-      to: tcid,
-      damage
-    });
+  shootAction(to: Cell, damage: number) {
+    let direct = this.board.activeTeam != this.team;    
+    return {
+      action: "shoot",
+      from: this.cell,
+      to,
+      shooter: this,
+      victim: to.unit,
+      damage,
+      direct
+    } as ShootAction;
   }
 
   canDamage(target: Unit) {
@@ -374,6 +383,7 @@ export default class Unit {
     );
   }
 
+  /** Calculates best position to move to, using team.strength and team.weakness of the cells */
   bestPosition(): Cell {
     let team = this.team;
     this.calculate();
@@ -394,33 +404,33 @@ export default class Unit {
         bestAt = Number(i);
       }
     }
-    return this.terrain.cells[bestAt];
+    return this.board.cells[bestAt];
   }
 
-  averageDamage(tcell: Cell, tunit?:Unit, direct = false) {
+  averageDamage(tcell: Cell, tunit?: Unit, direct = false) {
     let hitChance = this.hitChance(tcell, tunit, direct);
-    return (hitChance * this.gun.averageDamage(this,tcell)) / 100;
+    return (hitChance * this.gun.averageDamage(this, tcell)) / 100;
   }
 
   bestTarget() {
     let bestScore = -100;
     let bestAt: Cell = null;
-    for (let tchar of this.terrain.units) {
-      if (tchar.team == this.team || tchar.hp <= 0) continue;
-      let score = this.averageDamage(tchar.cell);
+    for (let target of this.board.units) {
+      if (target.team == this.team || target.hp <= 0) continue;
+      let score = this.averageDamage(target.cell);
       if (score > bestScore) {
         bestScore = score;
-        bestAt = tchar.cell;
+        bestAt = target.cell;
       }
     }
     return bestAt;
   }
 
-  async think() {
-    await this.move(this.bestPosition());
-    if (this.ap > 0) {
-      await this.shoot(this.bestTarget());
-    }
+  async aiMoveAndAct() {
+    if (!this.alive)
+      return;
+    await this.board.animate(this.move(this.bestPosition()));
+    await this.board.animate(this.shoot(this.bestTarget()));
   }
 
   dist(other: Unit | Cell) {

@@ -1,10 +1,11 @@
 import Gun from "./Gun";
+import { V2 } from "./v2";
 
 export type StageConf = {
   name: string;
   version: string;
   author: string;
-  terrain: string;
+  board: string;
 };
 
 export type UnitConf = {
@@ -29,10 +30,16 @@ export type StateConf = {
 }
 
 export type UnitState = {
-  cid: number;
-  symbol: string; 
-  hp?: number; 
-  ap?: number;
+  cid: number
+  symbol: string
+  hp?: number
+  ap?: number
+  exhaustion?: number
+  stress?: number
+  focus?: V2
+  velocity?: V2
+  faction?: number
+  maxHP?: number
 }
 
 export let campaigns: CampaignConf[] = [
@@ -107,7 +114,7 @@ export let campaigns: CampaignConf[] = [
         name: "Backyard 13",
         version: "1",
         author: "baturinsky",
-        terrain: `
+        board: `
     ##################################################
     #      #  a      ++++# + #    ++#  s             #
     # #    #  +         +#   #    ++#  ++++++++      #
@@ -144,7 +151,7 @@ export let campaigns: CampaignConf[] = [
         name: "Red Knight's Backyard",
         version: "1",
         author: "Red Knight",
-        terrain: `
+        board: `
     ##################################################
     ################# g+         ###++    ##      ++##
     ################# ++         +                 +##

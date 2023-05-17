@@ -1,21 +1,21 @@
 import * as v2 from "./v2";
 import { V2 } from "./v2";
-import Terrain from "./Terrain";
+import Board from "./Board";
 import Unit from "./Unit";
 import RenderSchematic from "./RenderSchematic";
 import Team from "./Team";
 import Cell from "./Cell";
-import { campaigns as coreCampaigns, StageConf, CampaignConf } from "./Campaigns";
+import { campaigns as coreCampaigns, StageConf, CampaignConf, StateConf } from "./Campaigns";
 import { parseWithNewLines } from "./Util";
+import { Action } from "./Action";
 
 export default class Game {
   ctx: CanvasRenderingContext2D;
   lastLoopTimeStamp: number;
   time: number = 0;
-  terrain: Terrain;
+  board: Board;
 
-  //eye: Char;
-  lastSelectedFaction: Team;
+  lastSelectedTeam: Team;
   chosen: Unit;
   lastChosen: Unit;
   hovered: Cell;
@@ -74,7 +74,7 @@ export default class Game {
   init(saveString?: string, useState: boolean = true) {
     delete this.chosen;
     delete this.hovered;
-    delete this.lastSelectedFaction;
+    delete this.lastSelectedTeam;
 
     let save;
 
@@ -101,16 +101,16 @@ export default class Game {
     this.customCampaign = false;
   }
 
-  init2(campaign: CampaignConf, stage: StageConf, state?: StageConf) {
+  init2(campaign: CampaignConf, stage: StageConf, state?: StateConf) {
     this.campaign = campaign;
 
     this.stage = stage;
 
-    this.terrain = new Terrain(
+    this.board = new Board(
       this.campaign,
       this.stage,
-      state || null,
-      (animation: any) => this.renderer.draw(animation)
+      state,
+      (actions:Action[]) => this.renderer.animateSequence(actions)
     );
 
     this.renderer.synch();
@@ -134,7 +134,7 @@ export default class Game {
     }
 
     if (include.state) {
-      o.state = this.terrain.serialize();
+      o.state = this.board.serialize();
     }
 
     o.stage = this.stage.name;
@@ -150,7 +150,6 @@ export default class Game {
 
   constructor(public updateUI: Function) {
     this.renderer = new RenderSchematic(this);
-
     this.init();
   }
 
@@ -216,7 +215,7 @@ export default class Game {
       }
 
       if (this.chosen && this.chosen.canDamage(cell.unit)) {
-        this.chosen.shoot(cell);
+        this.board.animate(this.chosen.shoot(cell));
         return;
       }
 
@@ -232,11 +231,11 @@ export default class Game {
     }
 
     if (!cell.unit && this.chosen && this.chosen.reachable(cell)) {
-      this.chosen.move(cell);
-      this.terrain.teams[Team.RED].calculate();
+      this.board.animate(this.chosen.move(cell));
+      this.board.teams[Team.RED].calculate();
     }
 
-    this.lastSelectedFaction = this.chosen ? this.chosen.team : this.terrain.we;
+    this.lastSelectedTeam = this.chosen ? this.chosen.team : this.board.we;
   }
 
   cancel() {
@@ -272,7 +271,7 @@ export default class Game {
     if (this.chosen && this.chosen.canDamage(cell.unit)) {
       cursor = "crosshair";
       this.updateTooltip(
-        this.renderer.cidToCenterScreen(cell.cid),
+        this.renderer.cidToCenterScreen(cell.id),
         `${this.chosen.hitChance(cell)}% ${this.chosen.gun
           .averageDamage(this.chosen, cell)
           .toFixed(1)}`
@@ -288,15 +287,15 @@ export default class Game {
   }
 
   get blue() {
-    return this.terrain.teams[Team.BLUE];
+    return this.board.teams[Team.BLUE];
   }
 
   get red() {
-    return this.terrain.teams[Team.RED];
+    return this.board.teams[Team.RED];
   }
 
   get activeTeam() {
-    return this.terrain.activeTeam;
+    return this.board.activeTeam;
   }
 
   async endTurn(aiSides: number) {
@@ -315,9 +314,9 @@ export default class Game {
 
     let team = this.activeTeam;
 
-    if (this.isAi(team)) await team.think();
+    if (this.isAi(team)) await team.makeAiTurn();
 
-    this.terrain.endSideTurn();
+    this.board.endSideTurn();
 
     this.renderer.resetCanvasCache();
 
@@ -328,14 +327,14 @@ export default class Game {
     this.aiSides = m;
   }
 
-  get hoveredChar() {
+  get hoveredUnit() {
     if (this.hovered) return this.hovered.unit;
   }
 
   chooseNext(delta = 1) {
     if (!this.chosen) {
       if (this.lastChosen) this.choose(this.lastChosen);
-      else this.choose(this.terrain.we.units[0]);
+      else this.choose(this.board.we.units[0]);
     } else {
       let team = this.chosen.team.units;
       let next =

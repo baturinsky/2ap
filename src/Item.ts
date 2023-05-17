@@ -1,4 +1,4 @@
-import Terrain from "./Terrain";
+import Board from "./Board";
 import Cell from "./Cell";
 import * as v2 from "./v2";
 import { V2 } from "./v2";

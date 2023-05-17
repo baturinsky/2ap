@@ -78,6 +78,7 @@ export function idiv(a: number, b: number) {
   return Math.floor(a / b);
 }
 
+/** "Fixes" methods so they are properly bound to the object */
 export function bind(target, name, descriptor) {
   return {
     get() {
@@ -107,4 +108,19 @@ export function signed(n: number):string {
 
 export function svgImg(attrs:string, body:string){
   return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>')`;
+}
+
+export async function runPromisesInOrder<T>(promises: (()=>Promise<T>)[]) {
+  const results: T[] = [];
+
+  for (const promise of promises) {
+    const result = await promise();
+    results.push(result);
+  }
+
+  return results;
+}
+
+export function shallowCopy(o:{[key:string]:any}){
+  return Object.fromEntries(Object.entries(o));
 }

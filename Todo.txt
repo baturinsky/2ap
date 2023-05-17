@@ -10,6 +10,8 @@ Targeted abilities (heal)
 AOE effects (explosion)
 Tile effects (smoke)
 
+Sprite graphics
+
 *Done*
 
 Saving
@@ -21,8 +23,6 @@ Overwatch
 Main menu
 Full Screen and scrolling
 Support for custom units, custom weapons, multiple stages in editor
-
-
 
 *Ideas*
 

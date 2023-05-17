@@ -1,37 +1,58 @@
 import Unit from "./Unit";
 import { canvasCache, Context2d } from "./Util";
-import Terrain from "./Terrain";
+import Board from "./Board";
 import * as v2 from "./v2";
 import shadowcast from "./sym-shadowcast";
 import Item from "./Item";
 
 export default class Cell {
-  rfov = new Set<number>(); /* raw FOV, without XCOM tricks */
-  xfov = new Set<number>(); /* FOV with respect of peek-out */
-  dfov = new Set<number>(); /* Direct fov, withonly source stepping out. For ground attacks and overwatch */
+  
+  /** List of the visible cells from here, without XCOM tricks */
+  rfov = new Set<number>(); 
+  
+  /** List of the visible cells from here, with respect of stepping out from this cell,
+   * but NOT to target cell. For ground attacks and overwatch. */
+  dfov = new Set<number>(); 
+
+  /** List of the visible cells from here, with respect of stepping out from this cell AND to target cell.*/
+  xfov = new Set<number>(); 
+  
+  /** Cells from where this cell is visible */
   povs: Cell[] = [];
+
+  /** Point of views for unit standing on this cell. Includes cell itself and cells perpendicular to the adjacent cover*/
   peeked: Cell[] = [];
+
+  /** List of cells with cover next to this cell */
   cover: number[];
+
+  /** Is this cell impassible */
   hole: boolean;
+
   items: Item[] = [];
 
   constructor(
-    public terrain: Terrain,
-    public cid: number,
+    public board: Board,
+    public id: number,
+    /** 
+     * 0 - passable, standable, no cover, transparent
+     * 1 - passable, not standable, half cover, transparent
+     * 2 - impassable, full cover, opaque
+     */
     public obstacle: number,
     public unit?: Unit
   ) {}
 
-  calculatePovAnCover() {
+  calculatePovAndCover() {
     if (this.obstacle) return;
-    this.cover = this.terrain.obstacles(this.cid);
+    this.cover = this.board.obstacles(this.id);
     this.calculatePovs();
   }
 
   calculateFov() {
     if (this.opaque) return;
 
-    let t = this.terrain;
+    let t = this.board;
 
     let [x, y] = this.at;
 
@@ -53,8 +74,8 @@ export default class Cell {
 
     for (let p of this.povs) {
       for (let visible of p.rfov) {
-        let visibleTile = this.terrain.cells[visible];
-        for (let neighbor of visibleTile.peeked) visibility.add(neighbor.cid);
+        let visibleTile = this.board.cells[visible];
+        for (let neighbor of visibleTile.peeked) visibility.add(neighbor.id);
       }
     }
     this.xfov = visibility;
@@ -73,7 +94,7 @@ export default class Cell {
 
 
   get at() {
-    return this.terrain.fromCid(this.cid);
+    return this.board.cellIdToV2(this.id);
   }
 
   dist(other: Cell | Unit) {
@@ -101,8 +122,8 @@ export default class Cell {
 
   calculatePovs() {
     this.povs = [];
-    let t = this.terrain;
-    let cid = this.cid;
+    let t = this.board;
+    let cid = this.id;
     this.povs.push(this);
     for (let dir = 0; dir < 8; dir += 2) {
       let forward = cid + t.dir8Deltas[dir];

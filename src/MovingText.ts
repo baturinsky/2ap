@@ -3,9 +3,9 @@ import Game from "./Game";
 import { V2 } from "./v2";
 import * as v2 from "./v2";
 import { Context2d } from "./Util";
-import Anim from "./Anim";
+import Animation from "./Animation";
 
-export default class MovingText implements Anim{
+export default class MovingText implements Animation {
   time = 0;
   constructor(
     public text: string,
@@ -13,16 +13,17 @@ export default class MovingText implements Anim{
     public lifeTime: number,
     public at: V2,
     public vel: V2 = [0, 0]
-  ) {    
+  ) {
   }
 
   update(dTime: number) {
     this.time += dTime;
     this.at = v2.sum(this.at, this.vel, dTime);
-    return this.time < this.lifeTime;
+    //console.log(this.at);
+    return this.time >= this.lifeTime;
   }
 
-  render(ctx:Context2d) {
+  render(ctx: Context2d) {
     ctx.save();
     ctx.fillStyle = this.color;
     ctx.shadowColor = `black`;

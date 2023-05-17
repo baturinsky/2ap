@@ -1,6 +1,6 @@
-export type Action = (time: number) => number | void;
+export type ScheduledAction = (time: number) => number | void;
 type Event = {
-  resolve: Action;
+  resolve: ScheduledAction;
   reject: (reason:any)=>void
   time: number;
 };
