@@ -1,0 +1,14 @@
+Attack stats:
+
+Max single unit damage
+Max total damage
+Decay per jump
+Area in cells
+Maximum range
+Spread
+
+Shape:
+
+Single target
+Blob (AREA number of cells closest to the target)
+Cone (AREA number of cells closest to the shooter)
